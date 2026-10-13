@@ -49,7 +49,7 @@ class Net:
         against a 600/minute limit, so archive requests are spaced out; a 429 waits out the minute."""
         if os.environ.get("STRIDE_OFFLINE"):
             r = self.s.get(url, params=params, timeout=timeout, only_if_cached=True)
-            if not getattr(r, "from_cache", False):
+            if r.status_code == 504 or not getattr(r, "from_cache", False):  # requests-cache answers a miss with 504 Not Cached
                 raise Offline(url)
             self.hits += 1
             if r.status_code == 404 and missing_ok:
