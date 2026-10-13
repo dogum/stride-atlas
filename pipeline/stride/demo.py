@@ -526,7 +526,9 @@ class Demo:
                 continue
             poly = g.polyline(path)
             L = float(np.hypot(*np.diff(poly, axis=0).T).sum())
-            if best is None or abs(L - target_m) < abs(best[1] - target_m):
+            # the same loop walked the other way is a tie that summation order breaks differently on each processor,
+            # and the direction changes the climb and the time: compare to the millimetre, and the first candidate wins
+            if best is None or round(abs(L - target_m), 3) < round(abs(best[1] - target_m), 3):
                 best = (poly, L)
         return best[0]
 
