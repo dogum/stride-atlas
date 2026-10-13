@@ -3,13 +3,15 @@ import * as d3_ from 'd3';
 // D3 is used untyped in the ported chart code; everything around it is typed.
 const d3: any = d3_;
 import { F, G, MODE, REG, S, emit, useWatch } from '../store';
-import { COND, MONTHS, REDUCED, TYPE, armArrival, countTo, dayDate, f1, fClock, fDate, fDur, fInt, fK, fPace, fPct, gradientCSS, MAP_RAMPS, TIP, typeLabel, customTitle } from '../core';
+import { COND, MONTHS, REDUCED, TYPE, armArrival, countTo, dayDate, f1, fClock, fDate, fDur, fInt, fK, fPace, fPct, gradientCSS, MAP_RAMPS, TIP, typeLabel, customTitle, wLabel } from '../core';
+import { STACK_MODES, Stack, type StackMode } from '../map/stack';
+import { CREDIT, creditLine } from '../credits';
 import { Atlas, MODES, legendFor, scaleFor } from '../map/atlas';
-import { EAGER, RichText, Seg } from './ui';
+import { ChHead, EAGER, RichText, Seg } from './ui';
 import { RECORDS, computeRecords } from '../charts/terrain';
 import { cuStats, drawCuCharts, drawCuMap, drawSplits, openCloseup, samples } from '../charts/closeup';
 import { TRACK, drawTrack } from '../charts/health';
-import { loadContours, loadStream } from '../data';
+import { loadContours, loadRoutes3D, loadStream } from '../data';
 import { eddington, streak } from '../charts/bests';
 
 // ---------------------------------------------------------------- hero, map, tiles
@@ -152,6 +154,76 @@ function Tiles({ v }: { v: string }) {
     </div>
   );
 }
+
+// ---------------------------------------------------------------- space and time (3D)
+export function StackSection() {
+  const v = useWatch(['filter', 'place', 'share', 'routes', 'stack']);
+  const wrap = useRef<HTMLDivElement>(null), sec = useRef<HTMLElement>(null);
+  const st = useRef<Stack | null>(null);
+  const [near, setNear] = useState(EAGER);
+  const [info, setInfo] = useState<any>(null);
+  const [missing, setMissing] = useState(false);
+  useEffect(() => {
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) setNear(true); if (st.current) st.current.visible = e.isIntersecting; }, { rootMargin: '600px 0px' });
+    io.observe(sec.current!);
+    return () => io.disconnect();
+  }, []);
+  useEffect(() => {
+    if (!near || st.current) return;
+    const s = new Stack(wrap.current!);
+    st.current = s; REG.stack = s;
+    s.visible = true;
+    s.onHover = (w, x, y) => {
+      if (!w) { TIP.hide(); return; }
+      const r = wrap.current!.getBoundingClientRect();
+      TIP.show({ clientX: r.left + x, clientY: r.top + y }, wLabel(w), [['Distance', f1(w.dist) + ' mi'], ['Start', fClock(w.hour)], ['Climb', w.gain != null ? fInt(w.gain) + ' ft' : '—'], ['', 'Click to open in close-up']]);
+    };
+    s.onClick = w => { TIP.hide(); openCloseup(w.id, true); };
+    const ro = new ResizeObserver(() => { s.resize(); s.fit(); });
+    ro.observe(wrap.current!);
+    return () => { ro.disconnect(); };
+  }, [near]);
+  useEffect(() => () => { st.current?.destroy(); st.current = null; REG.stack = null; }, []);
+  useEffect(() => {
+    const s = st.current; if (!s || !G.routeXY) return;
+    let alive = true;
+    (async () => {
+      await loadRoutes3D();
+      if (!alive) return;
+      setMissing(!G.routeEle);
+      s.mode = S.stackMode;
+      await s.build();
+      if (!alive) return;
+      s.render();
+      setInfo({ ...s.info });
+    })();
+    return () => { alive = false; };
+  }, [v, near]);
+  const m = S.stackMode as StackMode;
+  const span = info ? `${fDateMY(info.d0)} to ${fDateMY(info.d1 - 1)}` : '';
+  const legend = m === 'hour' ? ['Start time', '5 am', '9 pm', MAP_RAMPS.time] : ['Year', String(G.Y0), String(G.Y1), MAP_RAMPS.year];
+  const how = m === 'date' ? `Height is the date, ${span}: a loop walked for years rises as a column, a trip is a thin slab, a quiet stretch is a gap.`
+    : m === 'hour' ? 'Height is the time of day, midnight at the floor: each route climbs as its clock runs, so mornings sit low and evenings high.'
+    : `Height is the ground's elevation, exaggerated ${info?.exag ?? ''}× so the hills read, with the terrain's contours lifted to their own heights.`;
+  const places = (G.places || []).filter((p: any) => p.n >= 3).slice(0, 6);
+  return (
+    <section className="chapter" id="stack" ref={sec}>
+      <ChHead idx={9} eyebrow="Space & time" title="Every route, stacked in time">The atlas with a third axis. The floor is the map; height is when you were there. Drag to turn it, pick a height, click any line to open it.</ChHead>
+      <div className="grid">
+        <div className="panel c12" id="p-stack">
+          <div className="p-head"><div className="tt"><h3>{info ? `${fInt(info.n)} routes around ${info.name}` : 'Routes in 3D'}</h3><p className="sub">{missing ? 'This export predates the elevation and time buffers: run make export to fill the time-of-day and elevation views.' : how}</p></div>
+            <div className="p-tools"><Seg label="Height" options={STACK_MODES.map(o => ({ ...o, disabled: missing && o.key !== 'date' }))} value={m} onPick={k => { S.stackMode = k; st.current?.setMode(k as StackMode); emit('stack'); }} /></div></div>
+          <div className="stackwrap" ref={wrap}>
+            {places.length > 1 && <div className="map-ui"><div className="glass places"><Seg label="Place" options={places.map((p: any) => ({ key: p.id, label: p.id === 0 ? 'Home' : p.name.split(',')[0] }))} value={info?.place ?? 0} onPick={k => { S.place = k; emit('place'); }} /></div></div>}
+            <div className="glass map-bl"><span className="lbl">{legend[0] as string}</span><div className="map-legend"><span>{legend[1] as string}</span><span className="bar-r" style={{ background: gradientCSS(legend[3] as any) }} /><span>{legend[2] as string}</span></div></div>
+            {info && <div className="glass map-br stack-note"><span>Floor {f1(info.sideMi)} mi across{m === 'ele' ? ` · ${info.exag}× vertical` : ''}</span></div>}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+const fDateMY = (d: number) => { const dt = dayDate(d); return `${MONTHS[dt.getUTCMonth()]} ${dt.getUTCFullYear()}`; };
 
 // ---------------------------------------------------------------- records
 export function RecordsSection() {
@@ -297,6 +369,7 @@ export function About() {
             <dt>Eddington</dt><dd>{edd?.E} on foot ({edd?.need} more days of {edd ? edd.E + 1 : ''}+ miles for the next)</dd>
             <dt>Weather model</dt><dd>{m.weather_model ? `${m.weather_model.formula}; ${fInt(m.weather_model.n)} walks, R² ${m.weather_model.r2.toFixed(2)}` : '—'}</dd>
             <dt>Time zone</dt><dd>{m.home_tz} at home; trips use the zone where you walked</dd>
+            <dt>Software</dt><dd>{creditLine()}; open source under the MIT license{CREDIT.repo ? <>, <a href={CREDIT.repo} target="_blank" rel="noreferrer">{CREDIT.repo.replace(/^https?:\/\//, '')}</a></> : ''}</dd>
           </dl>
         </div>
         <div className="panel"><h3 style={{ margin: '0 0 10px' }}>Data sources</h3>

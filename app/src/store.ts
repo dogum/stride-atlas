@@ -11,7 +11,7 @@ export const GPS_TYPES = ['walk', 'run', 'hike', 'ride'];
 export const ON_FOOT = ['walk', 'run', 'hike'];
 
 export const S: any = {
-  y0: 2018, y1: 2026, types: new Set(GPS_TYPES), colorBy: 'year', place: 0, effortType: 'walk', calMetric: 'steps', cuId: null,
+  y0: 2018, y1: 2026, types: new Set(GPS_TYPES), colorBy: 'year', place: 0, effortType: 'walk', calMetric: 'steps', cuId: null, stackMode: 'date',
   // ?share=1 starts in share mode, so a recording or screenshot session never shows the privacy zone by accident
   share: typeof location !== 'undefined' && new URLSearchParams(location.search).get('share') === '1', basemap: 'contours',
 };

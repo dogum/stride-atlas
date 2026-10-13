@@ -160,11 +160,26 @@ Never write a subtitle that assumes a direction ("faster, and easier on the hear
 
 ## 13. Presentation and recording
 
+- **A compact home area and share mode can empty the 3D view.** In the first build the median home walk stayed within
+  630 m of its start and the privacy zone hid 47% of the home points; the 3D view still works but reads as a few walls.
+  Base the elevation view on the ground actually on the floor (the lowest contour of the whole place put the routes
+  off-screen).
+
 - **Presentation mode** (`?present=1`) is a data-driven tour; `scripts/record.mjs` streams it from headless Chrome over the DevTools screencast (about 30 fps at 1920×1080) and ffmpeg gives each frame its real duration.
 - **Lazy panels move the page under a scripted scroll.** Draw every panel up front in presentation mode, and measure a target again after each scroll.
 - **Frame maps around the captions.** Give the fit a bottom padding as tall as the caption, or the overlay hides the very clusters the caption describes.
 - **Fly between places** with deck.gl's `FlyToInterpolator`; scale line width and alpha with zoom so a region still reads as light.
+- **Hook in the first second.** The first cut opened on a static title card and a 13-second replay; viewers drop before
+  anything happens. Start the replay on frame one with the title over it, then move every two bars.
+- **Keep time like music.** Schedule everything against one clock (`at(bar)`), not chains of sleeps: a slow panel then
+  delays only itself, and the cuts stay on the beat for the soundtrack.
+- **Show the interaction, not just the result.** A visible pointer (a fingertip on the vertical cut) that presses the real
+  toggles reads as a person using the app.
+- **The screencast sends frames only when the page changes.** A still end card produces no frames; give the last frame
+  the time until recording stopped, or the video ends early and the music runs past it.
+- **Synthesised music needs checking by numbers, not ears**: deterministic seed, every note faded out (no clicks), peak
+  under -1 dBFS, mids loud enough for phone speakers; loudness is normalised when muxing.
 
 ## 14. Ideas not built yet
 
-Air quality since 2022; manual entries for activities no device kept (a small YAML file with provenance `manual`); a labelled basemap.
+Air quality since 2022; manual entries for activities no device kept (a small YAML file with provenance `manual`); a labelled basemap; more importers (Garmin Connect, Fitbit, Google Health Connect, Polar, COROS, a plain folder of GPX files). See `CONTRIBUTING.md`.

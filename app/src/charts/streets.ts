@@ -31,6 +31,14 @@ function ringStats(edges: any[], ring: number, done: (e: any) => boolean) {
   return r;
 }
 
+// the shares the panel shows for each ring (year filter and share mode applied), for captions elsewhere
+export function streetShares(): { streets: number; paths: number }[] {
+  const N = G.streets; if (!N) return [];
+  const asOf = Math.round((Date.UTC(S.y1 + 1, 0, 1) - G.D0) / G.DAY) - 1, share = !!S.share;
+  const done = (e: any) => e.walked && e.first <= asOf && !(share && e.hidden);
+  return [1, 2, 3].map(r => { const o = ringStats(N.edges, r, done); return { streets: o.streets.tot ? o.streets.wk / o.streets.tot : 0, paths: o.paths.tot ? o.paths.wk / o.paths.tot : 0 }; });
+}
+
 export function drawStreets(el: HTMLElement): Out {
   const N = G.streets;
   if (N === undefined) { emptyState(el, 'Loading the street network…'); loadStreets().then(() => emit('streets')); return; }

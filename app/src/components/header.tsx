@@ -5,7 +5,7 @@ const d3: any = d3_;
 import { G, GPS_TYPES, MODE, S, emit, useWatch } from '../store';
 import { TYPE, fInt, fK } from '../core';
 
-export const CHAPTERS = [['atlas', 'Atlas'], ['rhythm', 'Rhythm'], ['volume', 'Volume'], ['effort', 'Pace & effort'], ['terrain', 'Terrain & weather'], ['records', 'Records'], ['bests', 'Bests'], ['closeup', 'Close-up'], ['pool', 'Pool & weights'], ['health', 'Data health'], ['watches', 'Watches'], ['about', 'About']];
+export const CHAPTERS = [['atlas', 'Atlas'], ['stack', 'In 3D'], ['rhythm', 'Rhythm'], ['volume', 'Volume'], ['effort', 'Pace & effort'], ['terrain', 'Terrain & weather'], ['records', 'Records'], ['bests', 'Bests'], ['closeup', 'Close-up'], ['pool', 'Pool & weights'], ['health', 'Data health'], ['watches', 'Watches'], ['about', 'About']];
 
 export function applyFilter() {
   if (!S.types.has(S.effortType)) S.effortType = ['walk', 'run', 'hike'].find(k => S.types.has(k)) || 'walk';

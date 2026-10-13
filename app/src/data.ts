@@ -149,6 +149,18 @@ export async function loadRoutes() {
   G.routeShare = new Uint8Array(c); // 1 = visible in share mode (outside the privacy zone and the 200 m end trims)
 }
 
+// Per-point elevation (half metres, -32768 = none) and seconds from the start (2 s steps) for the 3D view, loaded
+// only when it comes near. An export from before these files existed leaves both null and the view says so.
+let r3P: Promise<void> | null = null;
+export function loadRoutes3D(): Promise<void> {
+  return r3P ||= (async () => {
+    const [e, t] = await Promise.all(['routes_ele.bin', 'routes_time.bin'].map(f => fetch(base + f).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null)));
+    const n = G.routeGap?.length ?? -1; // the dev server answers a missing file with index.html, so check the length
+    G.routeEle = e && e.byteLength === n * 2 ? new Int16Array(e) : null;
+    G.routeTime = t && t.byteLength === n * 2 ? new Uint16Array(t) : null;
+  })();
+}
+
 // Street network around home from OpenStreetMap (pipeline/stride/osm.py), with per-edge coverage. Optional:
 // missing files (no OSM step) leave G.streets null and the panel explains why.
 let streetsP: Promise<any> | null = null;

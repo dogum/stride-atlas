@@ -162,14 +162,16 @@ export class Atlas {
     if (!this.playing) L.push(new PathLayer({ id: 'routes-pick', ...base, ...filt, filterRange: this.dayRange(), getWidth: 7, getColor: [0, 0, 0, 1], pickable: true } as any));
     // zoomed out, a route is a few pixels long: draw it heavier and brighter so a region still reads as light
     const z = this.view.zoom ?? 12, boost = Math.max(1, Math.min(3.5, 1 + (11.5 - z) * 0.55));
+    // the video tour opens on a whole region, where one route is a speck: heavier and brighter still
+    const pres = !!REG.fitPad && z < 11;
     this.layerZoom = z;
     L.push(new PathLayer({
-      id: 'routes', ...base, ...filt, filterRange: this.dayRange(), getWidth: 1.4 * Math.min(1.6, boost), widthMinPixels: 0.9, opacity: Math.min(0.85, this.alpha / 255 * boost),
+      id: 'routes', ...base, ...filt, filterRange: this.dayRange(), getWidth: 1.4 * Math.min(pres ? 2.6 : 1.6, boost), widthMinPixels: 0.9, opacity: Math.min(0.9, this.alpha / 255 * boost * (pres ? 2.2 : 1)),
       getColor: (d: any) => this.colorFor(d.w), parameters: ADD, pickable: false,
       updateTriggers: { ...filt.updateTriggers, getColor: [S.colorBy, this.geomKey, S.colorBy === 'pace' ? this.filterKey : ''] },
     } as any));
     if (this.playing && this.trailMin >= 0) {
-      L.push(new PathLayer({ id: 'trail', ...base, ...filt, filterRange: [this.trailMin, this.filterMax], getWidth: 1.6, getColor: [255, 241, 230, 120], parameters: ADD } as any));
+      L.push(new PathLayer({ id: 'trail', ...base, ...filt, filterRange: [this.trailMin, this.filterMax], getWidth: pres ? 3 : 1.6, getColor: [255, 241, 230, pres ? 170 : 120], parameters: ADD } as any));
     }
     if (this.sel && !this.playing) {
       const sel = this.routes.filter(o => o.w.id === this.sel);
@@ -181,15 +183,15 @@ export class Atlas {
   render() { this.deck?.setProps({ layers: this.layers() }); }
   resize() { this.deck?.redraw('resize'); }
 
-  // timelapse: routes appear in date order over about 13 seconds, recent ones glowing white
-  play(reduced: boolean) {
+  // timelapse: routes appear in date order over about 13 seconds (the video tour asks for less), recent ones glowing white
+  play(reduced: boolean, secs = 13) {
     if (this.playing) { this.stop(); return; }
     this.sel = null; this.hooks.onSelect(null);
     const list = this.inFilter.slice().sort((a: any, b: any) => a.d - b.d || a.hour - b.hour);
     if (!list.length) return;
     const d0 = list[0].d - 1, d1 = list[list.length - 1].d;
     this.trailMin = d0;
-    const secs = 13, t0 = performance.now();
+    const t0 = performance.now();
     this.playing = { raf: 0 };
     const cum = d3.cumsum(list, (w: any) => w.dist);
     const step = () => {
@@ -205,8 +207,10 @@ export class Atlas {
     };
     this.playing.raf = requestAnimationFrame(step);
   }
+  // an empty map, for the frame before a replay starts
+  blank() { this.stop(); this.sel = null; this.filterMax = -1e9; this.render(); }
   stop() {
-    if (!this.playing) return;
+    if (!this.playing) { if (this.filterMax < 0) { this.filterMax = 1e9; this.render(); } return; }
     cancelAnimationFrame(this.playing.raf); this.playing = null; this.trailMin = -1; this.filterMax = 1e9; this.render(); this.hooks.onPlay({ on: false });
   }
   destroy() { this.stop(); this.deck?.finalize(); this.deck = null; }

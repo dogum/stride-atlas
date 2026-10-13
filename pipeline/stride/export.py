@@ -134,12 +134,20 @@ def share_visible(lat, lon, cum, home, zc, radius=300.0, trim=200.0) -> np.ndarr
 
 # ------------------------------------------------------------------ routes
 def export_routes(con, w: pd.DataFrame, home) -> pd.DataFrame:
-    pts = con.execute("""SELECT workout_id, lat, lon, gap, cum_gps_m FROM route_points_clean ORDER BY workout_id, seq""").fetchnumpy()
+    # elevation for the 3D view: USGS 3DEP where the enrich step has it (every route on one surface, so repeated loops
+    # stack cleanly), else the smoothed GPS altitude
+    enriched = con.execute("SELECT count(*) FROM information_schema.tables WHERE table_name = 'route_points_enriched'").fetchone()[0]
+    pts = con.execute(f"""SELECT workout_id, lat, lon, gap, cum_gps_m, epoch_ms(t_utc) AS t_ms, ele_gps_smooth_m AS ele_gps,
+                                 {'ele_dem_m' if enriched else 'NULL::DOUBLE'} AS ele_dem
+                          FROM {'route_points_enriched' if enriched else 'route_points_clean'} ORDER BY workout_id, seq""").fetchnumpy()
+    num = lambda a: np.ma.filled(np.ma.asarray(a, dtype=float), np.nan)  # NULL → NaN
+    ele_all = np.where(np.isfinite(num(pts["ele_dem"])), num(pts["ele_dem"]), num(pts["ele_gps"]))
+    t_all = num(pts["t_ms"]) / 1000
     wid = pts["workout_id"]
     u, f = np.unique(wid, return_index=True)
     bnd = dict(zip(u, zip(f, np.r_[f[1:], len(wid)])))
     order = w[(w.setting == "outdoor") & ~w.is_fragment].sort_values(["start_utc", "workout_id"]).workout_id.tolist()
-    xs, ys, gaps, shares, rows = [], [], [], [], []
+    xs, ys, gaps, shares, eles, ts, rows = [], [], [], [], [], [], []
     zc = zone_center(home)
     off = 0
     for i_, w_ in enumerate(order):
@@ -172,6 +180,10 @@ def export_routes(con, w: pd.DataFrame, home) -> pd.DataFrame:
         ck = cm[k]
         ta, tb = (0 if not (~vis[k]).any() else int(np.argmax(vis[k]))), n
         xs.append(lo[k]); ys.append(la[k]); gaps.append(gp[k]); shares.append(vis[k])
+        e = ele_all[a:b][k]
+        eles.append(np.where(np.isfinite(e), np.clip(np.round(e * 2), -32767, 32767), -32768))  # half metres; -32768 = none
+        tt = t_all[a:b][k]
+        ts.append(np.clip(np.round((tt - tt[0]) / 2), 0, 65535))                                # 2 s steps from the start
         rows.append({"workout_id": w_, "route_off": off, "route_n": n, "share_a": min(ta, n), "share_b": max(min(tb, n), min(ta, n))})
         off += n
     lonlat = np.empty(off * 2, dtype=np.float32)
@@ -180,6 +192,8 @@ def export_routes(con, w: pd.DataFrame, home) -> pd.DataFrame:
     (OUT / "routes.bin").write_bytes(lonlat.tobytes())
     (OUT / "routes_gap.bin").write_bytes(np.concatenate(gaps).astype(np.uint8).tobytes())
     (OUT / "routes_share.bin").write_bytes(np.concatenate(shares).astype(np.uint8).tobytes())
+    (OUT / "routes_ele.bin").write_bytes(np.concatenate(eles).astype("<i2").tobytes())
+    (OUT / "routes_time.bin").write_bytes(np.concatenate(ts).astype("<u2").tobytes())
     return pd.DataFrame(rows)
 
 

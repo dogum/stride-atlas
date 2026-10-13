@@ -3,7 +3,7 @@ import { G, MODE, S, computeF, emit, useWatch } from './store';
 import { loadCore, loadRest, loadRoutes } from './data';
 import { Header } from './components/header';
 import { ChHead, Panel, Seg } from './components/ui';
-import { AtlasSection, About, CloseupSection, RecordsSection, RelabelPanel, TrackPanel } from './components/sections';
+import { AtlasSection, About, CloseupSection, RecordsSection, RelabelPanel, StackSection, TrackPanel } from './components/sections';
 import { CAL_METRICS, calRamp, drawCal, drawClock, drawDow, drawMatrix, drawPunch, drawSun } from './charts/rhythm';
 import { drawMix, drawRace, drawWeekly, drawYearly } from './charts/volume';
 import { EFF, EFFORT_TYPES, drawBpm, drawFit, drawGait, drawHrpace, drawPace, drawPhour, drawPtemp, drawWxYear, drawZones, effortList, paceRampCSS } from './charts/effort';
@@ -13,6 +13,7 @@ import { drawLift, drawRides, drawSensors, drawSwim, drawSwolf } from './charts/
 import { RINGS, ST, drawStreets } from './charts/streets';
 import { drawDedupe, drawRules } from './charts/health';
 import { PRESENT, Presenter } from './present';
+import { CREDIT, creditLine } from './credits';
 
 function Loading({ msg, done }: { msg: string; done: boolean }) {
   return <div className="loading" style={{ opacity: done ? 0 : 1, pointerEvents: done ? 'none' : 'auto' }}><div><div>{msg}</div><div className="bar-l"><i /></div></div></div>;
@@ -98,6 +99,7 @@ export function App() {
       {PRESENT && <Presenter />}
       <main>
         <AtlasSection />
+        <StackSection />
 
         <section className="chapter" id="rhythm">
           <ChHead idx={0} eyebrow="Rhythm" title="When you move">The same data cut by day, hour, weekday, month and year. Each view answers a different question about habit.</ChHead>
@@ -197,7 +199,8 @@ export function App() {
 
         <About />
       </main>
-      <footer className="foot">Stride Atlas. Built locally from your Apple Health export ({G.meta?.export_date?.slice(0, 10)}); nothing on this page left your Mac. Missing values are shown as missing, never as zero.</footer>
+      <footer className="foot">Stride Atlas. Built locally from your Apple Health export ({G.meta?.export_date?.slice(0, 10)}); nothing on this page left your Mac. Missing values are shown as missing, never as zero.
+        <span className="credit">{CREDIT.repo ? <a href={CREDIT.repo} target="_blank" rel="noreferrer">{creditLine()}</a> : creditLine()} · open source, MIT</span></footer>
       <Loading msg={msg} done />
     </>
   );

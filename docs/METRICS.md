@@ -137,11 +137,25 @@ Also: heart rate against pace per year (least-squares `avg_hr ~ pace` for walks,
 
 Raw "pace against temperature" is confounded by fitness: fitness changes over the same years the weather varies. Show the raw medians, and add an adjusted view: fit `pace ~ year trend + spline(temp) + hour of day + climb per mile` on walks (statsmodels or a small GAM), and plot the partial effect of temperature with its confidence band. Use the same model to report a weather-adjusted pace trend.
 
+## Space and time (the 3D view)
+
+The routes around one place (the atlas's place; home when the atlas shows everywhere), drawn in local metres scaled so
+98% of points fit a floor about ±100 units across, clipped at ±125. Three heights, interpolated on the GPU when switched:
+
+- **Date**: the workout's day plus its start hour as a fraction, from the first route at that place (floor) to the last
+  (top, 150 units). A space-time cube: loops repeated for years rise as columns.
+- **Time of day**: the local start hour plus the elapsed time at each point, midnight at the floor and at the top.
+- **Elevation**: the ground under each point (3DEP where available) above the lowest route point or contour on the
+  floor, exaggerated so the relief fills about 60% of the height (between 1× and 30×, shown on screen).
+
+Share mode applies as on the atlas: hidden points split the routes, and the floor shadow carries the same gaps.
+
 ## Chart catalog
 
 | Chapter | Panel (id) | Data |
 |---|---|---|
 | Atlas | `map`, `tiles` | `route_points` (cleaned, simplified to about 5 m for display), `workouts_enriched`, `daily` |
+| In 3D (space and time) | `stack` | the atlas's display points plus `routes_ele.bin` (USGS 3DEP elevation, else smoothed GPS, in half metres) and `routes_time.bin` (seconds from the workout's start, in 2 s steps); place contours |
 | Rhythm | `cal`, `sun`, `clock`, `punch`, `matrix`, `dow` | `daily`, workout start and end local times, sun times for home |
 | Volume | `race`, `yearly`, `weekly`, `mix` | `workouts_enriched` aggregates; race projection = year-to-date ÷ mean share-of-year completed by this day across complete years |
 | Pace and effort | `pace`, `ptemp`, `phour`, `hrpace`, `bpm`, `zones`, `fit`, `gait` | `workouts_enriched`, `daily` |

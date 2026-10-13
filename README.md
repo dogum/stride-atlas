@@ -12,15 +12,18 @@ and say *"build this for my data."*
 
 ## What you get
 
-Eleven chapters, all computed from your data:
+Twelve chapters, all computed from your data:
 
 | | |
 |---|---|
-| **Atlas.** Every GPS route as additive light: the streets you walk most glow brightest. Color by year, pace, heart rate, temperature or time of day; replay the years; click any line. | **Rhythm.** Every day since your first export as a calendar, your walking clock year by year, hour by weekday. |
-| **Volume.** Cumulative miles year against year, miles by activity, weekly totals. | **Pace and effort.** Every workout's pace, pace against temperature (raw and weather-adjusted), heart rate at the same pace, zones, resting heart rate and VO₂ max, gait from the phone. |
-| **Terrain and weather.** Temperature at the start of every outing (from Health, else the nearest weather station), sky conditions, climbing, how hilly your routes are. | **Records.** Longest, fastest, steepest, hottest, coldest, earliest, darkest, most in a day, week, month and year, each one a click away from its route. |
-| **Bests.** Best efforts found inside every GPS track, your favourite loops raced against themselves, a fitness and fatigue model, the Eddington number, new ground, and the share of streets near home you have walked. | **Close-up.** One workout second by second: the route coloured by pace, elevation, pace and heart-rate streams, mile splits with grade-adjusted pace. |
-| **Pool and weights.** Swims with laps, strokes and SWOLF; strength sessions; indoor rides. | **Data health and Watches.** Every cleaning rule and how often it fired, one route raw against cleaned, why steps need deduplicating, and when each device and metric first appeared. |
+| **Atlas.** Every GPS route as additive light: the streets you walk most glow brightest. Color by year, pace, heart rate, temperature or time of day; replay the years; click any line. | **In 3D.** The same routes stacked by date, so the loops you have walked for years rise as towers; switch the height to time of day or to the ground's elevation and watch them move. |
+| **Rhythm.** Every day since your first export as a calendar, your walking clock year by year, hour by weekday. | **Volume.** Cumulative miles year against year, miles by activity, weekly totals. |
+| **Pace and effort.** Every workout's pace, pace against temperature (raw and weather-adjusted), heart rate at the same pace, zones, resting heart rate and VO₂ max, gait from the phone. | **Terrain and weather.** Temperature at the start of every outing (from Health, else the nearest weather station), sky conditions, climbing, how hilly your routes are. |
+| **Records.** Longest, fastest, steepest, hottest, coldest, earliest, darkest, most in a day, week, month and year, each one a click away from its route. | **Bests.** Best efforts found inside every GPS track, your favourite loops raced against themselves, a fitness and fatigue model, the Eddington number, new ground, and the share of streets near home you have walked. |
+| **Close-up.** One workout second by second: the route coloured by pace, elevation, pace and heart-rate streams, mile splits with grade-adjusted pace. | **Pool and weights.** Swims with laps, strokes and SWOLF; strength sessions; indoor rides. |
+| **Data health.** Every cleaning rule and how often it fired, one route raw against cleaned, why steps need deduplicating. | **Watches.** When each device and each metric first appeared, so a missing value is never read as a zero. |
+
+<p align="center"><img src="docs/images/stack.png" alt="Every route around home stacked in 3D by date" width="100%"></p>
 
 <p align="center">
 <img src="docs/images/records.png" alt="Records" width="49%"> <img src="docs/images/closeup.png" alt="Close-up of one hike" width="49%">
@@ -99,13 +102,16 @@ export.zip ─▶ inventory ─▶ parse ─▶ strava ─▶ clean ─▶ enric
 
 ```bash
 make dev                               # in one terminal
-node scripts/record.mjs                # 1920×1080 MP4 of the guided tour, in share mode, into data/video/
-node scripts/record.mjs --vertical     # 1080×1920 for phones
+node scripts/record.mjs                # 1920×1080, in share mode, into data/video/
+node scripts/record.mjs --vertical     # 1080×1920 for Reels, TikTok and Shorts
 ```
 
-The tour (`?present=1`) is written from your data: the replay of every route, a flight home, your busiest year, your
-longest outing in close-up, the weather extremes and your watches. `node scripts/shoot.mjs streets records` takes
-headless screenshots of any panel.
+About 70 seconds, written from your data and cut to the beat: every route replayed under the title, a flight home, the
+map recoloured four ways, your routes rising in 3D, then one stop per chapter with a pointer pressing the real toggles
+(a fingertip on the vertical cut), and an end card. Each run writes a silent copy and a `-music` copy with an original
+soundtrack synthesised to the tour's own timeline (`pipeline/stride/soundtrack.py`, so there is nothing to license);
+swap in your platform's music if you prefer. Open `?present=1` and press Play to watch it live.
+`node scripts/shoot.mjs streets records` takes headless screenshots of any panel.
 
 ## Useful commands
 
@@ -121,6 +127,14 @@ Weather: [Open-Meteo](https://open-meteo.com) historical archive (CC BY 4.0), [N
 [Geofabrik](https://download.geofabrik.de). Place names: [GeoNames](https://www.geonames.org) (CC BY 4.0) via
 `reverse_geocoder`. Fonts: Overpass, Public Sans, Overpass Mono (SIL OFL). Not affiliated with Apple or Strava.
 
+## Contributing
+
+Bug reports, export quirks, new data sources and new charts are all welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md)
+first: the one hard rule is that nothing from a real export ever goes into an issue or a pull request (`make demo`
+reproduces almost anything).
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+<sub>Made by Greg Dogum with [Claude Code](https://claude.com/claude-code).</sub>

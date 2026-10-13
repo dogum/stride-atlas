@@ -1,7 +1,7 @@
 # Stride Atlas: instructions for Claude Code
 
 Stride Atlas turns one person's Apple Health export (and, optionally, a Strava archive) into a local dashboard of every
-walk, run, hike and ride: a glowing route atlas, rhythm and volume charts, pace and effort, terrain and weather,
+walk, run, hike and ride: a glowing route atlas, the same routes stacked in 3D by date, time of day or elevation, rhythm and volume charts, pace and effort, terrain and weather,
 records, loops, fitness, swims and strength, a data-health chapter and a device timeline. The pipeline and the app are
 built. Your job is usually to run them on someone's data, adapt to what their export does differently, and explain
 what you found.
@@ -66,14 +66,16 @@ Read this file, then `docs/PLAYBOOK.md` (lessons from the first build), then ski
     short list of anything you could not do and why.
 
 Optional extras: `make weather-compare` (how the weather sources agree with Apple's own temperatures for this user),
-`node scripts/record.mjs` (a 70-second video of the dashboard in share mode, landscape or `--vertical`).
+`node scripts/record.mjs` (a 70-second, beat-synced video of the dashboard in share mode, landscape or `--vertical`, with a
+silent copy and one with an original generated soundtrack).
 
 ## Where things are
 
 ```
 pipeline/stride/   inventory, parse, strava, clean (+ track), enrich (+ weather, osm), derive (+ metrics), export,
-                   validate, verify, demo (synthetic data), health_report
-app/src/           React shell; charts/ are imperative D3; map/atlas.ts is deck.gl; present.tsx is the video tour
+                   validate, verify, demo (synthetic data), health_report, soundtrack (video music)
+app/src/           React shell; charts/ are imperative D3; map/atlas.ts and map/stack.ts (3D) are deck.gl; present.tsx is
+                   the video tour; credits.ts is the credit line
 scripts/           shoot.mjs (screenshots), record.mjs (video), lib/cdp.mjs (headless Chrome)
 docs/              the specs, the playbook, the decisions log
 demo/config.yaml   settings for `make demo`
