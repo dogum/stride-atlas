@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { G, MODE, S, computeF, emit, useWatch } from './store';
+import { DEMO, G, MODE, S, computeF, emit, useWatch } from './store';
 import { loadCore, loadRest, loadRoutes } from './data';
 import { Header } from './components/header';
 import { ChHead, Panel, Seg } from './components/ui';
@@ -199,7 +199,7 @@ export function App() {
 
         <About />
       </main>
-      <footer className="foot">Stride Atlas. Built locally from your Apple Health export ({G.meta?.export_date?.slice(0, 10)}); nothing on this page left your Mac. Missing values are shown as missing, never as zero.
+      <footer className="foot">{DEMO ? <>Stride Atlas live demo: a synthetic export ({G.meta?.export_date?.slice(0, 10)}) for a person who does not exist, built by the same pipeline. Your own build runs on your computer and nothing leaves it.</> : <>Stride Atlas. Built locally from your Apple Health export ({G.meta?.export_date?.slice(0, 10)}); nothing on this page left your Mac.</>} Missing values are shown as missing, never as zero.
         <span className="credit">{CREDIT.repo ? <a href={CREDIT.repo} target="_blank" rel="noreferrer">{creditLine()}</a> : creditLine()} · open source, MIT</span></footer>
       <Loading msg={msg} done />
     </>

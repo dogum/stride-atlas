@@ -8,7 +8,7 @@ ZIP := $(firstword $(wildcard $(DATA)/export.zip) $(shell for z in $$(ls -t $(DA
 STRAVA_ZIP := $(shell for z in $$(ls -t $(DATA)/*.zip $(DATA)/raw/*.zip 2>/dev/null); do unzip -l "$$z" activities.csv >/dev/null 2>&1 && echo "$$z" && break; done)
 DEMO_DATA ?= demo-data
 
-.PHONY: help all setup unzip inventory parse strava clean enrich osm weather-compare derive export reports validate verify-clean app test dev demo demo-offline ci hashes
+.PHONY: help all setup unzip inventory parse strava clean enrich osm weather-compare derive export reports validate verify-clean app test dev demo demo-offline site ci hashes
 
 help: ## list the targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | sed -E 's/:.*## /\t/' | expand -t 18
@@ -92,6 +92,12 @@ demo: ## build everything from synthetic data (no export needed) into demo-data/
 	@chmod -R u+w $(DEMO_DATA)/raw 2>/dev/null; rm -rf $(DEMO_DATA)/stride.duckdb $(DEMO_DATA)/raw
 	$(UV) python -m stride.demo --out $(DEMO_DATA)
 	STRIDE_CONFIG=demo/config.yaml STRIDE_REPORTS=$(DEMO_DATA)/reports $(MAKE) all DATA=$(DEMO_DATA)
+
+SITE_BASE ?= /
+SITE_URL ?=
+site: ## the public demo site from the demo data (after make demo) into app/dist; SITE_BASE=/repo-name/ for GitHub Pages
+	cd app && STRIDE_BASE=$(SITE_BASE) VITE_STRIDE_DEMO=1 SITE_URL=$(SITE_URL) npm run build
+	cp docs/images/og.png app/dist/og.png
 
 demo-offline: ## the demo with no network calls (weather and elevation stay missing)
 	STRIDE_OFFLINE=1 $(MAKE) demo

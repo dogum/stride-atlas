@@ -2,7 +2,7 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import * as d3_ from 'd3';
 // D3 is used untyped in the ported chart code; everything around it is typed.
 const d3: any = d3_;
-import { F, G, MODE, REG, S, emit, useWatch } from '../store';
+import { DEMO, F, G, MODE, REG, S, emit, useWatch } from '../store';
 import { COND, MONTHS, REDUCED, TYPE, armArrival, countTo, dayDate, f1, fClock, fDate, fDur, fInt, fK, fPace, fPct, gradientCSS, MAP_RAMPS, TIP, typeLabel, customTitle, wLabel } from '../core';
 import { STACK_MODES, Stack, type StackMode } from '../map/stack';
 import { CREDIT, creditLine } from '../credits';
@@ -11,7 +11,7 @@ import { ChHead, EAGER, RichText, Seg } from './ui';
 import { RECORDS, computeRecords } from '../charts/terrain';
 import { cuStats, drawCuCharts, drawCuMap, drawSplits, openCloseup, samples } from '../charts/closeup';
 import { TRACK, drawTrack } from '../charts/health';
-import { loadContours, loadRoutes3D, loadStream } from '../data';
+import { DATA_BASE, loadContours, loadRoutes3D, loadStream } from '../data';
 import { eddington, streak } from '../charts/bests';
 
 // ---------------------------------------------------------------- hero, map, tiles
@@ -349,13 +349,13 @@ export function About() {
   useWatch(['data']);
   // when the pipeline last wrote the data: the file's Last-Modified header, so no clock time is baked into the exports
   const [refreshed, setRefreshed] = useState<string | null>(null);
-  useEffect(() => { fetch('/data/meta.json', { method: 'HEAD' }).then(r => { const h = r.headers.get('last-modified'); if (h) setRefreshed(new Date(h).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })); }).catch(() => {}); }, []);
+  useEffect(() => { fetch(DATA_BASE + 'meta.json', { method: 'HEAD' }).then(r => { const h = r.headers.get('last-modified'); if (h) setRefreshed(new Date(h).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })); }).catch(() => {}); }, []);
   const m = G.meta; if (!m) return null;
   const c = m.counts || {};
   const edd = m.eddington;
   return (
     <section className="chapter" id="about">
-      <div className="ch-head"><div><div className="eyebrow">About</div><h2>Where every number comes from</h2></div><p>Everything here was computed on this computer from your Apple Health export{(m.sources || []).some((x: any) => x.name === 'Strava archive') ? ' and your Strava archive' : ''}. The only network calls were the cached weather, elevation and map lookups listed below.</p></div>
+      <div className="ch-head"><div><div className="eyebrow">About</div><h2>Where every number comes from</h2></div><p>{DEMO ? <>This is the live demo: a synthetic Apple Health export and Strava archive for Alex, who does not exist, run through the same pipeline you would run on your own data. On your computer, nothing leaves it.</> : <>Everything here was computed on this computer from your Apple Health export{(m.sources || []).some((x: any) => x.name === 'Strava archive') ? ' and your Strava archive' : ''}. The only network calls were the cached weather, elevation and map lookups listed below.</>}</p></div>
       <div className="about">
         <div className="panel"><h3 style={{ margin: '0 0 10px' }}>This build</h3>
           <dl>

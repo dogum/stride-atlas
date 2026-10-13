@@ -1,0 +1,57 @@
+name: demo site
+# The live demo: the synthetic export (make demo) through the whole pipeline, then the app, on GitHub Pages.
+# Nothing personal goes in: the data is generated from scratch on the runner. Weather and terrain responses are
+# cached between runs, so only the first build calls Open-Meteo, NOAA and USGS.
+# It deploys on push only where the repository variable DEMO_SITE is "true" (and Pages is set to GitHub Actions), so a
+# fork gets no failing runs; run it by hand from the Actions tab to publish a fork's own demo.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', '.github/ISSUE_TEMPLATE/**', '.github/pull_request_template.md']
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  build:
+    if: vars.DEMO_SITE == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - id: pages
+        uses: actions/configure-pages@v6
+      - name: weather and terrain cache
+        uses: actions/cache@v6
+        with:
+          path: demo-data/cache
+          key: demo-cache-${{ hashFiles('pipeline/stride/demo.py', 'demo/config.yaml') }}
+          restore-keys: demo-cache-
+      - run: uv sync --frozen
+      - run: cd app && npm ci --no-audit --no-fund
+      - name: the synthetic demo through the whole pipeline
+        run: make demo
+      - name: the site
+        run: make site SITE_BASE="${{ steps.pages.outputs.base_path }}/" SITE_URL="${{ steps.pages.outputs.base_url }}/"
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: app/dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

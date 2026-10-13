@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import * as d3_ from 'd3';
 // D3 is used untyped in the ported chart code; everything around it is typed.
 const d3: any = d3_;
-import { G, GPS_TYPES, MODE, S, emit, useWatch } from '../store';
+import { DEMO, G, GPS_TYPES, MODE, S, emit, useWatch } from '../store';
+import { CREDIT } from '../credits';
 import { TYPE, fInt, fK } from '../core';
 
 export const CHAPTERS = [['atlas', 'Atlas'], ['stack', 'In 3D'], ['rhythm', 'Rhythm'], ['volume', 'Volume'], ['effort', 'Pace & effort'], ['terrain', 'Terrain & weather'], ['records', 'Records'], ['bests', 'Bests'], ['closeup', 'Close-up'], ['pool', 'Pool & weights'], ['health', 'Data health'], ['watches', 'Watches'], ['about', 'About']];
@@ -72,11 +73,13 @@ export function Header() {
   const exp = G.meta?.export_date?.slice(0, 10);
   return (
     <header className="bar">
+      {DEMO && <div className="demo-bar"><span><b>Live demo</b> with synthetic data for Alex, who does not exist.</span>
+        <a href="?present=1">Play the 70-second tour</a><a href={CREDIT.repo || '#'}>Build yours from your Apple Health export →</a></div>}
       <div className="bar-in">
         <div className="brand">
           <svg className="mark" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="12" fill="none" stroke="var(--edge-strong)" strokeWidth="1.2" /><path d="M5 17 C 9 6, 13 20, 17 9 S 21 8, 22 7" fill="none" stroke="var(--signal)" strokeWidth="2" strokeLinecap="round" /><circle cx="5" cy="17" r="2" fill="var(--signal)" /></svg>
           <span className="name">Stride Atlas</span>
-          <span className="badge" title="Built from your Apple Health export on this computer">{exp ? `Your data · ${new Date(exp + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}` : 'Your data'}</span>
+          <span className="badge" title={DEMO ? 'A synthetic export for a person who does not exist' : 'Built from your Apple Health export on this computer'}>{exp ? `${DEMO ? 'Demo data' : 'Your data'} · ${new Date(exp + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}` : 'Your data'}</span>
           {S.share && <span className="badge" title="Route ends near home are hidden">Share mode</span>}
         </div>
         <div className="filters">

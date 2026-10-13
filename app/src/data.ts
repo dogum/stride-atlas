@@ -5,7 +5,9 @@ import { G, S } from './store';
 import { COND, MI, degF, ft, mph } from './core';
 
 const DAY = 864e5;
-const base = '/data/';
+// the app's own data folder, wherever the build is served from
+export const DATA_BASE = import.meta.env.BASE_URL + 'data/';
+const base = DATA_BASE;
 
 async function pq(name: string): Promise<any[]> {
   const res = await fetch(base + name);

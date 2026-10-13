@@ -4,6 +4,8 @@
 
 [![CI](https://github.com/dogum/stride-atlas/actions/workflows/ci.yml/badge.svg)](https://github.com/dogum/stride-atlas/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+**[Open the live demo →](https://dogum.github.io/stride-atlas/)** · [watch the 70-second tour](https://dogum.github.io/stride-atlas/?present=1) · synthetic data for a person who does not exist
+
 **Your Apple Health export as a map and a story.** Every walk, run, hike and ride you have recorded, cleaned, enriched
 with weather and terrain, and drawn as a local dashboard on your own computer. No accounts, no cloud, nothing uploaded.
 
@@ -36,6 +38,9 @@ The screenshots show **Alex, who does not exist**: `make demo` writes a syntheti
 over real terrain near Fort Collins, Colorado, with eight years of watch and phone data and an older Strava archive.
 
 ## Try it in two minutes (no export needed)
+
+Or skip the install: the [live demo](https://dogum.github.io/stride-atlas/) is this same build, published by
+`.github/workflows/pages.yml` from `make demo` and `make site`.
 
 ```bash
 git clone https://github.com/dogum/stride-atlas.git && cd stride-atlas

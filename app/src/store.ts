@@ -16,6 +16,9 @@ export const S: any = {
   share: typeof location !== 'undefined' && new URLSearchParams(location.search).get('share') === '1', basemap: 'contours',
 };
 
+// the public demo (synthetic data, served from GitHub Pages) says so on screen
+export const DEMO = import.meta.env.VITE_STRIDE_DEMO === '1';
+
 // live objects other modules need to drive (the presentation tour steers the atlas)
 export const REG: any = {};
 
