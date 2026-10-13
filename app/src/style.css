@@ -326,6 +326,7 @@ body { margin: 0; }
 .pres-card.hero { background: radial-gradient(ellipse 60% 46% at 50% 46%, rgba(7,12,22,.72), rgba(7,12,22,.25) 70%, transparent); transition: opacity .5s var(--ease); }
 .pres-card.hero .t { color: #fff; text-shadow: 0 4px 40px rgba(0,0,0,.6); }
 .pres-card.hero .s { color: #ffab78; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .16em; font-size: clamp(16px, 1.9vw, 26px); }
+.pres-card .f .url { text-transform: none; letter-spacing: .03em; }
 .pres-card .cr { margin-top: 12px; font-size: clamp(12px, 1.05vw, 15px); color: var(--ink-3); letter-spacing: .02em; animation: pres-up .9s .9s var(--ease) both; }
 /* a pointer that clicks the real controls; on the phone layout it is a fingertip */
 .pres-cursor { position: fixed; left: 0; top: 0; width: 26px; height: 26px; margin: -3px 0 0 -6px; opacity: 0; transition: opacity .3s var(--ease); filter: drop-shadow(0 3px 8px rgba(0,0,0,.55)); z-index: 3; }

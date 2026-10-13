@@ -17,7 +17,7 @@ import { Topo } from './components/ui';
 import { CREDIT } from './credits';
 
 type Caption = { eyebrow?: string; title: string; sub?: string; right?: boolean } | null;
-type Card = { kind: 'hero' | 'end'; title: string; sub: string; foot?: string; credit?: string } | null;
+type Card = { kind: 'hero' | 'end'; title: string; sub: string; foot?: string; url?: string; credit?: string } | null;
 const P = { cap: null as Caption, card: null as Card, kind: 'end', running: false, done: false, step: 0, steps: 1, stop: false, prepped: false };
 // the card keeps its kind while it fades out
 const set = (patch: Partial<typeof P>) => { Object.assign(P, patch); if (patch.card) P.kind = patch.card.kind; emit('present'); };
@@ -253,7 +253,7 @@ function steps(x: ReturnType<typeof facts>, N: any): Step[] {
   out.push({ name: 'end', bars: 3, run: async b => {
     await at(b - 0.3);
     cap(null); showCursor(false);
-    set({ card: { kind: 'end', title: 'Stride Atlas', sub: 'Your Apple Health export, mapped on your own machine.', foot: CREDIT.repo ? `Open source · ${CREDIT.repo.replace(/^https?:\/\/(www\.)?/, '')}` : 'Open source · build yours with Claude Code', credit: `by ${CREDIT.by} · built with ${CREDIT.with}` } });
+    set({ card: { kind: 'end', title: 'Stride Atlas', sub: 'Your Apple Health export, mapped on your own machine.', foot: CREDIT.repo ? 'Open source' : 'Open source · build yours with Claude Code', url: CREDIT.repo ? CREDIT.repo.replace(/^https?:\/\/(www\.)?/, '') : undefined, credit: `by ${CREDIT.by} · built with ${CREDIT.with}` } });
     await at(b + 3);
   } });
   return out;
@@ -326,7 +326,7 @@ export function Presenter() {
           <svg className="mark" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="12" fill="none" stroke="var(--edge-strong)" strokeWidth="1.2" /><path className="route" d="M5 17 C 9 6, 13 20, 17 9 S 21 8, 22 7" fill="none" stroke="var(--signal)" strokeWidth="2" strokeLinecap="round" pathLength={1} /><circle cx="5" cy="17" r="2" fill="var(--signal)" /></svg>
           <div className="t">{card.title}</div>
           <div className="s">{card.sub}</div>
-          {card.foot && <div className="f">{card.foot}</div>}
+          {card.foot && <div className="f">{card.foot}{card.url && <> · <span className="url">{card.url}</span></>}</div>}
           {card.credit && <div className="cr">{card.credit}</div>}
         </div>}
       </div>
