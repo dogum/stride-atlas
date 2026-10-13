@@ -19,4 +19,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: digest-${{ matrix.os }}
-          path: demo-data/demo_digest.json
+          path: |
+            demo-data/demo_digest.json
+            demo-data/export.zip
+            demo-data/export_strava_demo.zip

@@ -133,6 +133,14 @@ Never write a subtitle that assumes a direction ("faster, and easier on the hear
 - Parquet: `ORDER BY` everything, `SET threads=1` during export, round doubles to 6 decimals (DuckDB's parallel sums differ in the last bit between runs).
 - "Last refresh" in the app comes from the HTTP `Last-Modified` header of `meta.json`, so no clock time is baked into outputs.
 - `make verify-clean` must say "identical" before calling the build done.
+- **The same seed is not the same data on another machine** unless the generator is built for it. NumPy evaluates `exp`,
+  `sin` and `arctan2` differently on Apple Silicon and on x86 Linux (where it uses vector libraries), so values can differ
+  in the last bit. With one shared random stream, a workout that drew one extra number shifted every workout and day after
+  it: GitHub's runners built a demo with 2,035 routes where a Mac built 2,039. The demo generator now gives each workout,
+  day, the town and the schedule a stream of its own (keyed by what it is), and rounds values computed with those
+  functions before writing them. `make ci` checks the export's content digest against `demo/digest.json`; after an
+  intended change to the generator, run `make demo-digest` and commit it. Compare contents, not zip bytes: each
+  machine's zlib compresses differently.
 
 ---
 

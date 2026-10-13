@@ -36,7 +36,9 @@ met before. Working with Claude Code is encouraged: the repository is written to
   in `docs/CLEANING.md`. New metrics get a line in `docs/METRICS.md`. A change of default gets a row in
   `docs/DECISIONS.md` with the reason and how to undo it.
 - **It is tested**: `track.py` and `metrics.py` are numpy only and easy to unit-test against small hand-computed cases.
-- **Outputs stay deterministic**: `make verify-clean` on the demo must still report identical files.
+- **Outputs stay deterministic**: `make verify-clean` on the demo must still report identical files. If you change the
+  demo generator on purpose, run `make demo-digest` and commit `demo/digest.json`: CI checks that Linux and macOS
+  generate the same synthetic export.
 - **It keeps the look**: dusk-navy ground, blaze-orange accent, Overpass / Public Sans / Overpass Mono, light and dark
   themes. No component-library themes.
 - **Copy states what the data shows.** No assumed success stories: someone's numbers may go the other way.
