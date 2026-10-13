@@ -158,7 +158,11 @@ def weather_for_workouts(net: Net, w: pd.DataFrame, last_day: date, source: str 
             if not has_cond:
                 row["condition"] = condition_class(row.get("wcode"))
             out.append(row)
-    return pd.DataFrame(out)
+    # every column, even when nothing could be fetched (offline): the missing values stay missing
+    cols = ["workout_id", "wx_cell", "wx_source", "wx_station_km", "temp_api_c", "feels_c", "humidity_api", "dew_c", "wcode", "cloud", "wind_ms",
+            "gust_ms", "temp_mean_c", "humidity_mean", "wind_mean_ms", "precip_mm", "snow_cm", "condition"]
+    df = pd.DataFrame(out)
+    return df.reindex(columns=cols + [c for c in df.columns if c not in cols])
 
 
 # ------------------------------------------------------------------ DEM
