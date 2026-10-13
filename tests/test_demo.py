@@ -30,3 +30,16 @@ def test_every_timestamp_carries_the_export_offset():
     winter = datetime(2024, 1, 15, 8, 0, tzinfo=TZ)      # MST, -0700 on the day
     assert ts(winter).endswith(datetime.now(XOFF).strftime("%z"))  # but written with the export's offset
     assert ts(winter) == "2024-01-15 09:00:00 -0600"
+
+
+def test_a_workout_does_not_depend_on_what_was_generated_before_it(tmp_path):
+    # one shared random stream let a last-bit difference in one workout shift every workout after it, so GitHub's
+    # x86 runners and Apple Silicon wrote different demo exports from the same seed
+    at = datetime(2024, 6, 1, 7, 30, tzinfo=TZ)
+    a = Demo(tmp_path / "a", seed=7)
+    a.workout("walk", at)
+    b = Demo(tmp_path / "b", seed=7)
+    b.workout("run", datetime(2024, 5, 30, 6, 10, tzinfo=TZ))
+    b.workout("hike", datetime(2024, 5, 31, 8, 0, tzinfo=TZ))
+    b.workout("walk", at)
+    assert a.gpx and list(a.gpx.values())[-1] == list(b.gpx.values())[-1]

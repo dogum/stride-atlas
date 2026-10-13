@@ -1,0 +1,22 @@
+name: determinism probe (temporary)
+on:
+  push:
+    branches: [fix/demo-determinism]
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+      - run: uv sync --frozen
+      - run: uv run python -c "import numpy, platform; print(platform.machine(), numpy.__version__); numpy.show_runtime()"
+      - run: uv run python -m stride.demo --out demo-data --check demo/digest.json
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.os }}
+          path: demo-data/demo_digest.json

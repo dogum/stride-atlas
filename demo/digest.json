@@ -1,0 +1,10 @@
+{
+ "seed": 7,
+ "parts": {
+  "export.xml": "c20ca30204fe118c65404778d34c09beba8049b3dae25e043a7d7c927684ed25",
+  "routes": "f6cac9cba4069e64e88c666f9d2fafd3fe79170c8e395f14c5224f4479475f0c",
+  "strava": "deff3b70eaa8b943e3dc63a3643557cc783782e720d4bba4f5ab29e4828bd358",
+  "town.osm": "a950544639bf50b56dea829596913f7df430b1df1cef2af149281b5dd7597d9a",
+  "all": "be1e678ce17284f5c273e88fa4ca3749f1f90c687c75b32954bc73db52d3df43"
+ }
+}

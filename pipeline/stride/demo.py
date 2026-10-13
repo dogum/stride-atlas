@@ -393,6 +393,9 @@ def make_track(g: Graph, poly: np.ndarray, start: datetime, kind: str, rng, fit:
         hacc, vacc = np.r_[hacc, np.full(len(dx), 4.0)], np.r_[vacc, np.full(len(dx), 3.0)]
         speed, course = np.r_[speed, np.full(len(dx), 14.0)], np.r_[course, np.full(len(dx), 90.0)]
     lat, lon = to_ll(x, y, g.origin)
+    # values computed with exp, sin and arctan2 are rounded before they are written: those functions can differ in the
+    # last bit between machines, and six printed decimals would show it now and then
+    alt, speed, course = np.round(alt, 3), np.round(speed, 4), np.round(course, 2)
     return {"lat": lat, "lon": lon, "alt": alt, "t": np.array([start + timedelta(seconds=float(q)) for q in times]), "hacc": hacc, "vacc": vacc,
             "speed": speed, "course": course, "dist_m": float(total), "moving_s": float(T), "elapsed_s": float(times[-1]),
             "events": [(k_, start + timedelta(seconds=float(q))) for k_, q in events],
@@ -456,9 +459,9 @@ class Writer:
 class Demo:
     def __init__(self, out: Path, seed: int = 7):
         self.out = out
-        self.rng = np.random.default_rng(seed)
-        self.town = build_town(self.rng)
-        self.trip = build_trip(self.rng)
+        self.seed = seed
+        self.town = build_town(self._rng("town"))
+        self.trip = build_trip(self._rng("trip"))
         self.W = Writer()
         self.gpx: dict[str, bytes] = {}
         self.strava: list[dict] = []
@@ -467,6 +470,13 @@ class Demo:
         self.trips = [(date(2019, 7, 13), date(2019, 7, 20)), (date(2022, 5, 21), date(2022, 5, 28)), (date(2025, 8, 9), date(2025, 8, 16))]
         self.favorites = self._favorites()
         self.n_workouts = 0
+
+    def _rng(self, *key) -> np.random.Generator:
+        """A random stream of its own for each part of the export (the town, the schedule, each workout, each day), keyed by
+        what it is. Floating point can differ in the last bit between machines (Apple Silicon and x86 Linux evaluate exp and
+        sin differently), which can change how many numbers one workout draws; with one shared stream that shifted every
+        workout and day after it, so the same seed gave a different export on GitHub's runners."""
+        return np.random.default_rng([self.seed, *(zlib.crc32(str(k).encode()) for k in key)])
 
     # ---- routes
     def _loop(self, g: Graph, target_m: float, rng, jitter=0.3, prefer=1.0, start=None, kinds=("town", "trail")):
@@ -521,8 +531,9 @@ class Demo:
         return best[0]
 
     # ---- one workout
-    def workout(self, kind: str, start: datetime, rng, *, place="home", source="watch", indoor=False, fragment=False, dup=False,
+    def workout(self, kind: str, start: datetime, *, place="home", source="watch", indoor=False, fragment=False, dup=False,
                 forgot=False, drive=False, jump=False, title=None, target=None, strava_only=False, long_run=False):
+        rng = self._rng("workout", kind, start.isoformat(), source)
         d = start.date()
         fit = fitness(d)
         g = self.trip if place == "trip" else self.town
@@ -661,7 +672,7 @@ class Demo:
         lines.append(" </Workout>")
         self.W.workouts.append((ts(start), "\n".join(lines)))
         if dup:  # the same walk, also saved by a second app
-            self.workout(kind, start + timedelta(seconds=40), rng, source="strava_app", indoor=True)
+            self.workout(kind, start + timedelta(seconds=40), source="strava_app", indoor=True)
 
     def _gpx(self, tr) -> bytes:
         rows = [f'<trkpt lon="{lo:.6f}" lat="{la:.6f}"><ele>{a:.6f}</ele><time>{t.astimezone(timezone.utc):%Y-%m-%dT%H:%M:%SZ}</time>'
@@ -716,10 +727,10 @@ class Demo:
 
     # ---- daily records
     def days(self):
-        rng = self.rng
         d, last = APPLE_FIRST, EXPORT_AT.date()
         W = self.W
         while d <= last:
+            rng = self._rng("day", d.isoformat())
             f = fitness(d)
             dow = d.weekday()
             season = 1 + 0.12 * math.cos(2 * math.pi * (d.timetuple().tm_yday - 190) / 365.25)
@@ -806,7 +817,7 @@ class Demo:
 
     # ---- the schedule of workouts
     def schedule(self):
-        rng = self.rng
+        rng = self._rng("schedule")  # only the decisions: each workout draws from its own stream
         # Strava years: a Garmin and a lot of running
         d = STRAVA_FROM
         while d <= STRAVA_TO:
@@ -814,14 +825,14 @@ class Demo:
             if dow in (1, 3, 5) and rng.random() < 0.72:
                 hh = 6.5 if dow != 5 else 8
                 st = datetime(d.year, d.month, d.day, int(hh), int(rng.integers(0, 50)), tzinfo=TZ)
-                self.workout("run", st, rng, strava_only=True, long_run=(dow == 5),
+                self.workout("run", st, strava_only=True, long_run=(dow == 5),
                              title="Turkey Trot 10K" if (d.month == 11 and d.day >= 22 and dow == 3 and d.day <= 28) else None)
             if dow == 6 and d.month in (5, 6, 7, 8, 9, 10) and rng.random() < 0.45:
                 st = datetime(d.year, d.month, d.day, 7, int(rng.integers(0, 50)), tzinfo=TZ)
-                self.workout("hike", st, rng, strava_only=True)
+                self.workout("hike", st, strava_only=True)
             d += timedelta(days=1)
-        self.workout("hike", datetime(2017, 6, 17, 4, 50, tzinfo=TZ), rng, strava_only=True, target=31_000, title="Ridge Challenge")
-        self.workout("hike", datetime(2018, 8, 4, 5, 30, tzinfo=TZ), rng, strava_only=True, target=19_000, title="Sunrise on Skyline")
+        self.workout("hike", datetime(2017, 6, 17, 4, 50, tzinfo=TZ), strava_only=True, target=31_000, title="Ridge Challenge")
+        self.workout("hike", datetime(2018, 8, 4, 5, 30, tzinfo=TZ), strava_only=True, target=19_000, title="Sunrise on Skyline")
         # Apple years
         d = WATCH_FROM
         last = EXPORT_AT.date() - timedelta(days=1)
@@ -837,7 +848,7 @@ class Demo:
             if away:
                 if rng.random() < 0.85:
                     st = datetime(d.year, d.month, d.day, int(rng.integers(8, 17)), int(rng.integers(0, 59)), tzinfo=TRIP_TZ)
-                    self.workout("hike" if dow == 6 else "walk", st, rng, place="trip")
+                    self.workout("hike" if dow == 6 else "walk", st, place="trip")
                 d += timedelta(days=1)
                 continue
             p_walk = 0.62 if covid else 0.5 if d < date(2024, 1, 1) else 0.66
@@ -852,34 +863,34 @@ class Demo:
                         break
                 indoor = (d.month in (12, 1, 2) and rng.random() < 0.18)
                 if q == "fragment":
-                    self.workout("walk", st, rng, fragment=True)
+                    self.workout("walk", st, fragment=True)
                 elif q == "fastwalk":  # a one-off route, so the favourite loops keep honest walking records
-                    self.workout("fastwalk", st, rng, target=rng.uniform(2.2, 3.5) * MI)
+                    self.workout("fastwalk", st, target=rng.uniform(2.2, 3.5) * MI)
                 else:
-                    self.workout("walk", st, rng, indoor=indoor, dup=(q == "dup"), forgot=(q == "forgot"), jump=(q == "jump"),
+                    self.workout("walk", st, indoor=indoor, dup=(q == "dup"), forgot=(q == "forgot"), jump=(q == "jump"),
                                  target=(rng.uniform(5.5, 8) * MI if dow == 6 and rng.random() < 0.3 else None))
             if date(2021, 4, 1) <= d <= date(2023, 1, 31) and dow in (1, 4) and rng.random() < 0.7:
                 st = datetime(d.year, d.month, d.day, 6, int(rng.integers(0, 40)), tzinfo=TZ)
-                self.workout("run", st, rng)
+                self.workout("run", st)
             if dow == 6 and d.month in (4, 5, 6, 7, 8, 9, 10) and rng.random() < (0.32 if d.year >= 2024 else 0.22):
                 st = datetime(d.year, d.month, d.day, 8, int(rng.integers(0, 50)), tzinfo=TZ)
                 q = "drive" if quirks["drive"] and rng.random() < 0.25 else None
                 if q:
                     quirks["drive"] -= 1
-                self.workout("hike", st, rng, drive=bool(q), jump=rng.random() < 0.05)
+                self.workout("hike", st, drive=bool(q), jump=rng.random() < 0.05)
             if date(2020, 11, 2) <= d <= date(2022, 8, 31) and dow in (0, 2, 4) and rng.random() < 0.75:
                 st = datetime(d.year, d.month, d.day, 19, int(rng.integers(0, 30)), tzinfo=TZ)
-                self.workout("ride", st, rng, source="peloton", indoor=True)
+                self.workout("ride", st, source="peloton", indoor=True)
                 if d.year == 2021 and rng.random() < 0.6:  # also sent to Strava, which keeps its own copy
-                    self.workout("ride", st + timedelta(seconds=2), rng, strava_only=True)
+                    self.workout("ride", st + timedelta(seconds=2), strava_only=True)
             if d >= date(2022, 1, 10) and dow in (1, 3) and rng.random() < 0.55:
                 st = datetime(d.year, d.month, d.day, 17, int(rng.integers(0, 50)), tzinfo=TZ)
-                self.workout("strength", st, rng, indoor=True)
+                self.workout("strength", st, indoor=True)
             if date(2023, 6, 5) <= d <= date(2024, 8, 30) and dow == 5 and rng.random() < 0.8:
                 st = datetime(d.year, d.month, d.day, 7, int(rng.integers(0, 30)), tzinfo=TZ)
-                self.workout("swim", st, rng, indoor=True)
+                self.workout("swim", st, indoor=True)
             d += timedelta(days=1)
-        self.workout("hike", datetime(2024, 7, 13, 5, 10, tzinfo=TZ), rng, target=24_000)
+        self.workout("hike", datetime(2024, 7, 13, 5, 10, tzinfo=TZ), target=24_000)
 
     # ---- outputs
     def town_osm(self) -> bytes:
@@ -959,10 +970,39 @@ class Demo:
         (self.out / "town.osm").write_bytes(self.town_osm())
 
 
+def digest(out: Path) -> dict:
+    """What the generator wrote, hashed by content: one hash per part and one for everything, plus a short hash per file
+    for finding where two machines disagree. Zip and gzip bytes depend on each machine's zlib, so only contents count."""
+    import hashlib
+
+    def h(items) -> str:
+        m = hashlib.sha256()
+        for name, data in items:
+            m.update(name.encode() + b"\0" + hashlib.sha256(data).digest())
+        return m.hexdigest()
+
+    files: dict[str, bytes] = {}
+    for zp in ("export.zip", "export_strava_demo.zip"):
+        with zipfile.ZipFile(out / zp) as z:
+            for n in z.namelist():
+                b = z.read(n)
+                files[n] = gzip.decompress(b) if n.endswith(".gz") else b
+    files["town.osm"] = (out / "town.osm").read_bytes()
+    part = lambda n: "export.xml" if n.endswith("export.xml") else "routes" if "/workout-routes/" in n else "town.osm" if n == "town.osm" else "strava"
+    parts = {k: h((n, files[n]) for n in sorted(files) if part(n) == k) for k in ("export.xml", "routes", "strava", "town.osm")}
+    parts["all"] = h((k, v.encode()) for k, v in sorted(parts.items()))
+    return {"parts": parts, "files": {n: hashlib.sha256(files[n]).hexdigest()[:12] for n in sorted(files)}}
+
+
 def main() -> None:
+    import json
+    import sys
+
     ap = argparse.ArgumentParser(description="Write a synthetic Apple Health export and Strava archive (see the module docstring).")
     ap.add_argument("--out", default="demo-data")
     ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--check", metavar="DIGEST", help="fail unless the export matches this digest file (what CI runs on Linux)")
+    ap.add_argument("--write-digest", metavar="DIGEST", help="record this export's digest, after an intended change to the generator")
     a = ap.parse_args()
     out = Path(a.out)
     demo = Demo(out, a.seed)
@@ -970,6 +1010,19 @@ def main() -> None:
     demo.days()
     demo.write()
     print(f"demo: {demo.n_workouts:,} Health workouts, {len(demo.gpx):,} routes, {len(demo.W.records):,} records, {len(demo.strava)} Strava activities -> {out}/")
+    dg = digest(out)
+    (out / "demo_digest.json").write_text(json.dumps(dg, indent=1) + "\n")
+    print(f"demo digest: {dg['parts']['all'][:16]}")
+    if a.write_digest:
+        Path(a.write_digest).write_text(json.dumps({"seed": a.seed, "parts": dg["parts"]}, indent=1) + "\n")
+    if a.check:
+        want = json.loads(Path(a.check).read_text())["parts"]
+        bad = [k for k in want if want[k] != dg["parts"].get(k)]
+        if bad:
+            sys.exit(f"demo: the synthetic export differs from {a.check} in {', '.join(k for k in bad if k != 'all')}. If you changed the "
+                     f"generator on purpose, run `make demo-digest` and commit {a.check}; if not, the generator is not deterministic on "
+                     f"this machine (docs/PLAYBOOK.md, Determinism). Per-file hashes: {out}/demo_digest.json")
+        print(f"demo: identical to {a.check}")
 
 
 if __name__ == "__main__":
