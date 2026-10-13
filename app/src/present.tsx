@@ -253,7 +253,7 @@ function steps(x: ReturnType<typeof facts>, N: any): Step[] {
   out.push({ name: 'end', bars: 3, run: async b => {
     await at(b - 0.3);
     cap(null); showCursor(false);
-    set({ card: { kind: 'end', title: 'Stride Atlas', sub: 'Your Apple Health export, mapped on your own machine.', foot: CREDIT.repo ? CREDIT.repo.replace(/^https?:\/\//, '') : 'Open source · build yours with Claude Code', credit: `by ${CREDIT.by} · built with ${CREDIT.with}` } });
+    set({ card: { kind: 'end', title: 'Stride Atlas', sub: 'Your Apple Health export, mapped on your own machine.', foot: CREDIT.repo ? `Open source · ${CREDIT.repo.replace(/^https?:\/\/(www\.)?/, '')}` : 'Open source · build yours with Claude Code', credit: `by ${CREDIT.by} · built with ${CREDIT.with}` } });
     await at(b + 3);
   } });
   return out;

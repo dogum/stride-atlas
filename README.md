@@ -2,6 +2,8 @@
 
 # Stride Atlas
 
+[![CI](https://github.com/dogum/stride-atlas/actions/workflows/ci.yml/badge.svg)](https://github.com/dogum/stride-atlas/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 **Your Apple Health export as a map and a story.** Every walk, run, hike and ride you have recorded, cleaned, enriched
 with weather and terrain, and drawn as a local dashboard on your own computer. No accounts, no cloud, nothing uploaded.
 
@@ -36,7 +38,7 @@ over real terrain near Fort Collins, Colorado, with eight years of watch and pho
 ## Try it in two minutes (no export needed)
 
 ```bash
-git clone <this repo> stride-atlas && cd stride-atlas
+git clone https://github.com/dogum/stride-atlas.git && cd stride-atlas
 make setup      # uv sync + npm install
 make demo       # synthetic export → the whole pipeline (about 8 minutes the first time; weather and terrain are fetched once)
 make dev        # http://localhost:5173
@@ -137,4 +139,4 @@ reproduces almost anything).
 
 MIT. See [LICENSE](LICENSE).
 
-<sub>Made by Greg Dogum with [Claude Code](https://claude.com/claude-code).</sub>
+<sub>Made by [Greg Dogum](https://github.com/dogum) with [Claude Code](https://claude.com/claude-code).</sub>

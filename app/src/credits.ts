@@ -3,6 +3,6 @@
 export const CREDIT = {
   by: 'Greg Dogum',
   with: 'Claude Code',
-  repo: '', // e.g. https://github.com/<you>/stride-atlas, once the repository is public
+  repo: 'https://github.com/dogum/stride-atlas',
 };
 export const creditLine = () => `Stride Atlas by ${CREDIT.by}, built with ${CREDIT.with}`;

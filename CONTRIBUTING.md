@@ -58,6 +58,6 @@ unsure whether something fits, open an issue first.
 
 ## Credit
 
-Stride Atlas was made by Greg Dogum with [Claude Code](https://claude.com/claude-code), and it is MIT licensed: fork it,
+Stride Atlas was made by [Greg Dogum](https://github.com/dogum) with [Claude Code](https://claude.com/claude-code), and it is MIT licensed: fork it,
 change it, ship it. The small credit line lives in `app/src/credits.ts`; if you build on the project, a link back is
 appreciated.
