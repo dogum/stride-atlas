@@ -1,0 +1,126 @@
+<p align="center"><img src="docs/images/atlas.png" alt="The route atlas: every walk and run as glowing lines over contour terrain" width="100%"></p>
+
+# Stride Atlas
+
+**Your Apple Health export as a map and a story.** Every walk, run, hike and ride you have recorded, cleaned, enriched
+with weather and terrain, and drawn as a local dashboard on your own computer. No accounts, no cloud, nothing uploaded.
+
+Clone it, drop in your export, and run one command, or open the folder in [Claude Code](https://claude.com/claude-code)
+and say *"build this for my data."*
+
+<p align="center"><img src="docs/images/tour.gif" alt="A tour of the dashboard" width="100%"></p>
+
+## What you get
+
+Eleven chapters, all computed from your data:
+
+| | |
+|---|---|
+| **Atlas.** Every GPS route as additive light: the streets you walk most glow brightest. Color by year, pace, heart rate, temperature or time of day; replay the years; click any line. | **Rhythm.** Every day since your first export as a calendar, your walking clock year by year, hour by weekday. |
+| **Volume.** Cumulative miles year against year, miles by activity, weekly totals. | **Pace and effort.** Every workout's pace, pace against temperature (raw and weather-adjusted), heart rate at the same pace, zones, resting heart rate and VO₂ max, gait from the phone. |
+| **Terrain and weather.** Temperature at the start of every outing (from Health, else the nearest weather station), sky conditions, climbing, how hilly your routes are. | **Records.** Longest, fastest, steepest, hottest, coldest, earliest, darkest, most in a day, week, month and year, each one a click away from its route. |
+| **Bests.** Best efforts found inside every GPS track, your favourite loops raced against themselves, a fitness and fatigue model, the Eddington number, new ground, and the share of streets near home you have walked. | **Close-up.** One workout second by second: the route coloured by pace, elevation, pace and heart-rate streams, mile splits with grade-adjusted pace. |
+| **Pool and weights.** Swims with laps, strokes and SWOLF; strength sessions; indoor rides. | **Data health and Watches.** Every cleaning rule and how often it fired, one route raw against cleaned, why steps need deduplicating, and when each device and metric first appeared. |
+
+<p align="center">
+<img src="docs/images/records.png" alt="Records" width="49%"> <img src="docs/images/closeup.png" alt="Close-up of one hike" width="49%">
+<img src="docs/images/streets.png" alt="Streets walked near home" width="49%"> <img src="docs/images/sensors.png" alt="Devices and metrics over time" width="49%">
+</p>
+
+The screenshots show **Alex, who does not exist**: `make demo` writes a synthetic export for a procedural town laid
+over real terrain near Fort Collins, Colorado, with eight years of watch and phone data and an older Strava archive.
+
+## Try it in two minutes (no export needed)
+
+```bash
+git clone <this repo> stride-atlas && cd stride-atlas
+make setup      # uv sync + npm install
+make demo       # synthetic export → the whole pipeline (about 8 minutes the first time; weather and terrain are fetched once)
+make dev        # http://localhost:5173
+```
+
+Requirements: [uv](https://docs.astral.sh/uv/) (it installs Python 3.12), Node 20+, and on macOS or Linux the usual
+`make` and `unzip`. Optional: Google Chrome or Chromium for headless screenshots and video, `ffmpeg` for video.
+
+## Build it for your own data
+
+1. **Export from the Health app.** On your iPhone: Health → your profile picture → **Export All Health Data**. AirDrop
+   the zip to your computer and put it in `data/` (any name).
+2. **Optional: your Strava archive**, if you used another watch before your Apple Watch: strava.com → Settings → My
+   Account → Download or Delete Your Account → *Request your archive*. Put that zip in `data/` too. Only its activities
+   are read; overlaps with Health (a Peloton class saved by both, say) are merged.
+3. **Run it.**
+   ```bash
+   cp config.example.yaml config.yaml   # set units: imperial or metric
+   make all                             # about 10 minutes for a large export the first time
+   make dev
+   ```
+4. **Check it.** `reports/06_validation.md` lists ten random workouts with blank columns to fill from the Fitness app,
+   monthly step totals to compare with Health, and every record with its date.
+
+### With Claude Code
+
+Open the folder in Claude Code and say **"build this for my data."** It follows [`CLAUDE.md`](CLAUDE.md): runs each phase,
+reads the inventory of your export, adapts to whatever your export does differently, logs every judgment call in
+`data/DECISIONS.md` (next to your data, never committed; the defaults are in [`docs/DECISIONS.md`](docs/DECISIONS.md)), reads the extremes of every record before trusting them, reviews every chart,
+and hands you the validation report. [`docs/PLAYBOOK.md`](docs/PLAYBOOK.md) is everything the first build learned, so
+it does not have to be rediscovered.
+
+## Privacy
+
+- Everything runs on your computer. The app reads only its own `/data` folder; fonts and scripts are bundled.
+- The only network calls are cached lookups: hourly weather (NOAA stations and Open-Meteo, with locations rounded to a
+  0.25° grid), terrain (USGS 3DEP tiles on a fixed grid) and one OpenStreetMap regional extract. Nothing is sent about
+  you. A second run makes no calls at all.
+- Your home is detected from where routes start and stays in the local database. **Share mode** (a button in the app,
+  or `?share=1`) hides the start and end of routes near home and a zone around it, for screenshots and videos.
+- `data/`, `app/public/data/` and `reports/` are git-ignored. Never commit them.
+
+## How it works
+
+```
+export.zip ─▶ inventory ─▶ parse ─▶ strava ─▶ clean ─▶ enrich ─▶ derive ─▶ export ─▶ app
+             (Phase 0)    DuckDB   optional   rules    weather,   metrics,   Parquet,   React + D3
+                                              G1–G6,   terrain,   records,   route      + deck.gl
+                                              W1–W5,   sun,       loops,     buffers
+                                              S1, H1–H3 streets   fitness
+```
+
+- **Pipeline:** Python 3.12 with `lxml` (streaming a multi-GB XML), DuckDB, numpy/scipy, `requests-cache`, `osmnx` and
+  `pyosmium`, `fitdecode`. Every cleaning change is logged in `cleaning_log`; every enriched value has a provenance
+  column.
+- **App:** Vite, React and TypeScript; D3 for charts; deck.gl for the atlas (hundreds of thousands of points at 60 fps,
+  filtered on the GPU); Parquet read in the browser with hyparquet.
+- **Specs:** [`HEALTH_EXPORT.md`](docs/HEALTH_EXPORT.md) (what is in an export, including Strava's),
+  [`CLEANING.md`](docs/CLEANING.md) (every rule), [`ENRICHMENT.md`](docs/ENRICHMENT.md) (every outside source),
+  [`METRICS.md`](docs/METRICS.md) (every number on screen).
+
+## Make a video
+
+```bash
+make dev                               # in one terminal
+node scripts/record.mjs                # 1920×1080 MP4 of the guided tour, in share mode, into data/video/
+node scripts/record.mjs --vertical     # 1080×1920 for phones
+```
+
+The tour (`?present=1`) is written from your data: the replay of every route, a flight home, your busiest year, your
+longest outing in close-up, the weather extremes and your watches. `node scripts/shoot.mjs streets records` takes
+headless screenshots of any panel.
+
+## Useful commands
+
+`make help` lists everything. The ones you will use: `make all`, `make dev`, `make test`, `make validate`,
+`make verify-clean` (rebuild from the raw export and compare every output hash), `make weather-compare` (how the weather
+sources agree with Apple's own temperatures for you), `make demo`.
+
+## Sources and credits
+
+Weather: [Open-Meteo](https://open-meteo.com) historical archive (CC BY 4.0), [NOAA NCEI GHCNh](https://www.ncei.noaa.gov/products/global-historical-climatology-network-hourly)
+(public domain), optionally [NASA POWER](https://power.larc.nasa.gov). Terrain: [USGS 3DEP](https://www.usgs.gov/3d-elevation-program)
+(public domain). Streets: © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL), extracts by
+[Geofabrik](https://download.geofabrik.de). Place names: [GeoNames](https://www.geonames.org) (CC BY 4.0) via
+`reverse_geocoder`. Fonts: Overpass, Public Sans, Overpass Mono (SIL OFL). Not affiliated with Apple or Strava.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

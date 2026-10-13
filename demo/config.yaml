@@ -1,0 +1,48 @@
+# Settings for `make demo` (synthetic data in demo-data/). Same as config.example.yaml except the street network,
+# which is the demo town's own file instead of an OpenStreetMap download.
+units: imperial            # imperial or metric, display only
+week_start: monday
+
+heart_rate:
+  max_bpm: null            # null = 99.5th percentile of workout HR from the last two years
+  resting: daily           # daily resting HR from the watch, or a fixed number
+  zones_pct_of_max: [60, 70, 80, 90]   # zone 1 below 60%
+
+on_foot_types: [walk, run, hike]
+gps_types: [walk, run, hike, ride]
+exclude_indoor_from_routes: true
+
+dedupe:
+  source_priority: [watch, phone, other]   # for steps, distance, flights
+  workout_overlap: 0.80
+
+cleaning:
+  max_speed_mph: {walk: 9, hike: 9, run: 18, ride: 45}
+  forgot_to_stop_mph: 12
+  door_jitter_radius_m: 25
+  door_jitter_seconds: 45
+  hacc_drop_m: 40
+  climb_hysteresis_m: 2
+
+weather:
+  source: auto             # auto (default: NOAA station within 30 km, Open-Meteo for the rest) | open-meteo (ERA5 reanalysis) | noaa (stations only, GHCNh) | nasa-power (MERRA-2)
+                           # all free and keyless; see docs/ENRICHMENT.md and reports/weather_sources.md for how they compare
+
+privacy:
+  home_radius_m: 300       # home is detected automatically from route starts
+  trim_m: 200              # hidden at both ends of home routes in share mode
+  weather_grid_deg: 0.25   # coordinates are rounded to this before any API call
+
+loops:
+  grid_m: 25
+  jaccard_min: 0.85
+  start_within_m: 150
+  length_tolerance: 0.05
+  names: {}                # e.g. {Loop A: "Library loop"}
+
+exploration:
+  grid_m: 30
+  use_osm: true
+  osm_source: file           # the demo town's walkable streets, written by `python -m stride.demo`
+  osm_file: demo-data/town.osm
+  osm_attribution: "Synthetic demo street network (Cedar Hollow does not exist)"

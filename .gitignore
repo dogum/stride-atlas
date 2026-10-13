@@ -1,0 +1,20 @@
+# your data never goes into git
+data/*
+!data/README.md
+demo-data/
+app/public/data/
+app/public/tiles/
+reports/
+*.duckdb
+*.zip
+*.log
+
+# environments and builds
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+node_modules/
+app/dist/
+.DS_Store
+/config.yaml

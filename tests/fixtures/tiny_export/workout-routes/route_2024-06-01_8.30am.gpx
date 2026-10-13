@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Apple Health Export" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>walk</name>
+    <trkseg>
+      <trkpt lon="-75.000000" lat="40.000000"><ele>50.000000</ele><time>2024-06-01T12:00:00Z</time><extensions><speed>1.400000</speed><course>90.000000</course><hAcc>4.000000</hAcc><vAcc>3.000000</vAcc></extensions></trkpt>
+      <trkpt lon="-74.999835" lat="40.000000"><ele>50.500000</ele><time>2024-06-01T12:00:10Z</time><extensions><speed>1.400000</speed><course>90.000000</course><hAcc>4.000000</hAcc><vAcc>3.000000</vAcc></extensions></trkpt>
+      <trkpt lon="-74.999670" lat="40.000000"><ele>51.000000</ele><time>2024-06-01T12:00:20Z</time><extensions><speed>1.400000</speed><course>90.000000</course><hAcc>4.000000</hAcc><vAcc>3.000000</vAcc></extensions></trkpt>
+      <trkpt lon="-74.999505" lat="40.000000"><ele>51.500000</ele><time>2024-06-01T12:00:30Z</time><extensions><speed>1.400000</speed><course>90.000000</course><hAcc>4.000000</hAcc><vAcc>3.000000</vAcc></extensions></trkpt>
+      <trkpt lon="-74.999340" lat="40.000000"><ele>52.000000</ele><time>2024-06-01T12:00:40Z</time><extensions><speed>1.400000</speed><course>90.000000</course><hAcc>4.000000</hAcc><vAcc>3.000000</vAcc></extensions></trkpt>
+      <trkpt lon="-74.999175" lat="40.000000"><ele>52.500000</ele><time>2024-06-01T12:00:50Z</time><extensions><speed>1.400000</speed><course>90.000000</course><hAcc>4.000000</hAcc><vAcc>3.000000</vAcc></extensions></trkpt>
+      <trkpt lon="-74.999010" lat="40.000000"><ele>53.000000</ele><time>2024-06-01T12:01:00Z</time><extensions><speed>1.400000</speed><course>90.000000</course><hAcc>4.000000</hAcc><vAcc>3.000000</vAcc></extensions></trkpt>
+      <trkpt lon="-74.998845" lat="40.000000"><ele>53.500000</ele><time>2024-06-01T12:01:10Z</time><extensions><speed>1.400000</speed><course>90.000000</course><hAcc>4.000000</hAcc><vAcc>3.000000</vAcc></extensions></trkpt>
+      <trkpt lon="-74.998680" lat="40.000000"><ele>54.000000</ele><time>2024-06-01T12:01:20Z</time><extensions><speed>1.400000</speed><course>90.000000</course><hAcc>4.000000</hAcc><vAcc>3.000000</vAcc></extensions></trkpt>
+      <trkpt lon="-74.998515" lat="40.000000"><ele>54.500000</ele><time>2024-06-01T12:01:30Z</time><extensions><speed>1.400000</speed><course>90.000000</course><hAcc>4.000000</hAcc><vAcc>3.000000</vAcc></extensions></trkpt>
+      <trkpt lon="-74.998350" lat="40.000000"><ele>55.000000</ele><time>2024-06-01T12:01:40Z</time><extensions><speed>1.400000</speed><course>90.000000</course><hAcc>4.000000</hAcc><vAcc>-1.000000</vAcc></extensions></trkpt>
+      <trkpt lon="-74.998185" lat="40.000000"><ele>55.500000</ele><time>2024-06-01T12:01:50Z</time><extensions><speed>1.400000</speed><course>90.000000</course><hAcc>4.000000</hAcc><vAcc>-1.000000</vAcc></extensions></trkpt>
+    </trkseg>
+  </trk>
+</gpx>
