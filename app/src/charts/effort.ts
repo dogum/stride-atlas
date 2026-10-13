@@ -4,7 +4,7 @@ import * as d3_ from 'd3';
 // D3 is used untyped in the ported chart code; everything around it is typed.
 const d3: any = d3_;
 import { F, G, S } from '../store';
-import { MONTHS, Out, TIP, TYPE, ZONES, fDateISO, armArrival, css, dayDate, divInterp, emptyState, f1, fDate, fInt, fK, fPace, fPct, frame, gradientCSS, ordinalRamp, rollingMedian, tempColor, typeLabel, xAxis, yGrid, yearTicks } from '../core';
+import { MONTHS, Out, TIP, TYPE, ZONES, fDateISO, armArrival, css, dayDate, divInterp, emptyState, f1, fDate, fInt, fK, fPace, fPct, frame, gradientCSS, ordinalRamp, rollingMedian, tempColor, typeLabel, xAxis, yGrid, yearTicks, daySpan } from '../core';
 import { openCloseup } from './closeup';
 
 export const EFFORT_TYPES = [{ key: 'walk', label: 'Walks' }, { key: 'run', label: 'Runs' }, { key: 'hike', label: 'Hikes' }];
@@ -24,11 +24,11 @@ function effortGuard(el: HTMLElement, min = 5) {
 export function drawPace(el: HTMLElement): Out {
   const ws = effortGuard(el); if (!ws) return;
   const f = frame(el, 320, { t: 12, r: 16, b: 26, l: 48 });
-  const x = d3.scaleLinear(d3.extent(F.days, (d: any) => d.d) as any, [0, f.iw]);
+  const x = d3.scaleLinear(daySpan(), [0, f.iw]);
   const ext = [d3.quantile(ws, 0.995, (w: any) => w.pace)!, d3.quantile(ws, 0.005, (w: any) => w.pace)!];
   const yS = d3.scaleLinear([ext[0] + 0.3, ext[1] - 0.3], [f.ih, 0]).nice();
   paceAxis(f, yS);
-  const yt = yearTicks(F.years, F.days[0].d);
+  const yt = yearTicks(F.years, daySpan()[0]);
   xAxis(f.g, x, f.ih, { values: yt, fmt: (v: number) => dayDate(v).getUTCFullYear() });
   const tc = tempColor();
   const clamp = (p: number) => Math.max(yS.domain()[1], Math.min(yS.domain()[0], p));

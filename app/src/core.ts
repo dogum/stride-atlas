@@ -1,6 +1,6 @@
 // Port of mockup/src/app-core.js: formatting, colour ramps, tooltip, chart frame, axes, motion.
 import * as d3 from 'd3';
-import { G, MODE } from './store';
+import { F, G, MODE } from './store';
 
 export const TYPES = [
   { key: 'walk', name: 'Walk', tok: '--s1' },
@@ -125,6 +125,12 @@ export function xAxis(g: any, x: any, ih: number, opts: any = {}) {
 }
 export function emptyState(el: HTMLElement, text: string) { el.replaceChildren(); const d = document.createElement('div'); d.className = 'empty'; d.textContent = text; el.appendChild(d); }
 export function rollingMedian(vals: number[], win: number) { const out: number[] = []; for (let i = 0; i < vals.length; i++) { const a = vals.slice(Math.max(0, i - (win >> 1)), Math.min(vals.length, i + (win >> 1) + 1)); out.push(d3.median(a) as number); } return out; }
+// the time axis for charts of workouts: the daily records or the workouts in the filter, whichever reach further
+// (an older watch's routes, from a Strava archive say, can predate the phone's daily data by years)
+export function daySpan(): [number, number] {
+  const lo = [F.days[0]?.d, F.W[0]?.d].filter((v: any) => v != null), hi = [F.days[F.days.length - 1]?.d, F.W[F.W.length - 1]?.d].filter((v: any) => v != null);
+  return lo.length ? [Math.min(...lo), Math.max(...hi)] : [0, 1];
+}
 export const yearTicks = (years: number[], d0: number) => years.map(y => Math.max(d0, Math.round((Date.UTC(y, 0, 1) - G.D0) / G.DAY)));
 export const monthTicks = () => MONTHS.map((m, i) => Math.round((Date.UTC(2025, i, 1) - Date.UTC(2025, 0, 1)) / G.DAY));
 

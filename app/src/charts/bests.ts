@@ -4,7 +4,7 @@ import * as d3_ from 'd3';
 // D3 is used untyped in the ported chart code; everything around it is typed.
 const d3: any = d3_;
 import { F, G, S } from '../store';
-import { MONTHS, Out, TIP, armArrival, css, dayDate, dayOfISO, emptyState, f1, fDate, fDateShort, fInt, fK, fPace, frame, fTime, typeColor, typeLabel, xAxis, yGrid, yearTicks } from '../core';
+import { MONTHS, Out, TIP, armArrival, css, dayDate, dayOfISO, emptyState, f1, fDate, fDateShort, fInt, fK, fPace, frame, fTime, typeColor, typeLabel, xAxis, yGrid, yearTicks, daySpan } from '../core';
 import { routeSegments } from '../data';
 import { openCloseup } from './closeup';
 
@@ -36,12 +36,12 @@ export function drawProg(el: HTMLElement): Out {
   const D = ef[0]?.D ?? 1;
   if (ef.length < 3) return emptyState(el, `Not enough GPS ${BS.type}s of ${BS.dist} or longer in this range (${ef.length}).`);
   const f = frame(el, 330, { t: 26, r: 24, b: 26, l: 54 });
-  const x = d3.scaleLinear(d3.extent(F.days, (d: any) => d.d) as any, [0, f.iw]);
+  const x = d3.scaleLinear(daySpan(), [0, f.iw]);
   const ext = d3.extent(ef, (e: any) => e.t) as [number, number];
   const yS = d3.scaleLinear([d3.quantile(ef, 0.98, (e: any) => e.t)!, ext[0] * 0.985], [f.ih, 0]).nice();
   f.g.append('g').attr('class', 'gridl').call(d3.axisLeft(yS).ticks(5).tickSize(-f.iw).tickFormat('' as any));
   f.g.append('g').attr('class', 'ax noline').call(d3.axisLeft(yS).ticks(5).tickSize(0).tickPadding(8).tickFormat(fTime as any));
-  xAxis(f.g, x, f.ih, { values: yearTicks(F.years, F.days[0].d), fmt: (v: number) => dayDate(v).getUTCFullYear() });
+  xAxis(f.g, x, f.ih, { values: yearTicks(F.years, daySpan()[0]), fmt: (v: number) => dayDate(v).getUTCFullYear() });
   const col = typeColor(BS.type);
   f.g.append('g').attr('class', 'a-reveal').selectAll('circle').data(ef.filter((e: any) => e.t <= yS.domain()[0])).join('circle').attr('cx', (e: any) => x(e.w.d)).attr('cy', (e: any) => yS(e.t)).attr('r', 2.4).style('fill', col).style('opacity', .32);
   const stair = prs.map((e: any) => [x(e.w.d), yS(e.t)]); stair.push([f.iw, stair[stair.length - 1][1]]);
@@ -132,7 +132,7 @@ export function drawLoops(el: HTMLElement): Out {
   });
   for (const { sv, arr, best } of cards) {
     const f = frame(sv, 74, { t: 6, r: 6, b: 14, l: 38 });
-    const x = d3.scaleLinear(d3.extent(F.days, (d: any) => d.d) as any, [0, f.iw]);
+    const x = d3.scaleLinear(daySpan(), [0, f.iw]);
     const ex = d3.extent(arr, (l: any) => l.elapsed_s / 60) as [number, number];
     const yS = d3.scaleLinear([d3.quantile(arr, 0.95, (l: any) => l.elapsed_s / 60)! * 1.02, ex[0] * 0.98], [f.ih, 0]).clamp(true);
     f.g.append('g').attr('class', 'ax noline').call(d3.axisLeft(yS).ticks(2).tickSize(0).tickPadding(4).tickFormat((v: any) => fTime(v)));
@@ -225,11 +225,11 @@ export function drawGround(el: HTMLElement): Out {
   const out = (G.newGround || []).map((r: any) => ({ ...r, w: G.byId.get(r.id) })).filter((r: any) => ok(r.w)).map((r: any) => ({ ...r, d: r.w.d, cum: r.cum_new_ground_m / 1609.344, nw: r.new_ground_m / 1609.344 }));
   if (!out.length) return emptyState(el, 'No routes in range.');
   const f = frame(el, 260, { t: 14, r: 64, b: 26, l: 50 });
-  const x = d3.scaleLinear(d3.extent(F.days, (d: any) => d.d) as any, [0, f.iw]);
+  const x = d3.scaleLinear(daySpan(), [0, f.iw]);
   const c0 = out[0].cum - out[0].nw, c1 = out[out.length - 1].cum;
   const yS = d3.scaleLinear([Math.max(0, c0 * 0.96), c1 * 1.04], [f.ih, 0]).nice();
   yGrid(f.g, yS, f.iw, 4, (v: number) => fInt(v) + ' mi');
-  xAxis(f.g, x, f.ih, { values: yearTicks(F.years, F.days[0].d), fmt: (v: number) => dayDate(v).getUTCFullYear() });
+  xAxis(f.g, x, f.ih, { values: yearTicks(F.years, daySpan()[0]), fmt: (v: number) => dayDate(v).getUTCFullYear() });
   f.g.append('path').datum(out).attr('class', 'a-fade').attr('d', d3.area().x(o => x(o.d)).y0(f.ih).y1(o => yS(o.cum)).curve(d3.curveStepAfter)).style('fill', 'var(--s3)').style('opacity', .14);
   f.g.append('path').datum(out).attr('class', 'a-line').attr('d', d3.line().x(o => x(o.d)).y(o => yS(o.cum)).curve(d3.curveStepAfter)).style('fill', 'none').style('stroke', 'var(--s3)').style('stroke-width', 2.2);
   const byY = d3.rollups(out, v => ({ nw: d3.sum(v, (o: any) => o.nw), mi: d3.sum(v, (o: any) => o.w.dist), end: v[v.length - 1] }), (o: any) => o.w.y);
