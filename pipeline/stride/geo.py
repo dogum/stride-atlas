@@ -64,32 +64,56 @@ def tz_at(lat: float, lon: float) -> str | None:
     return _tf().timezone_at(lng=lon, lat=lat)
 
 
-def tz_segments(obs: pd.DataFrame, home_tz: str) -> pd.DataFrame:
+def tz_segments(obs: pd.DataFrame, home_tz: str, pad: pd.Timedelta = pd.Timedelta(days=2)) -> pd.DataFrame:
     """Turn (t_utc, tz) observations into contiguous segments [from_utc, to_utc).
 
-    Consecutive observations in the same zone form one segment. When the zone
-    changes, the switch happens halfway between the last observation in the old
-    zone and the first in the new one. Before the first observation the first
-    zone applies, after the last the last zone applies.
+    Consecutive observations in the same zone form one run. Between two runs the switch happens halfway, except that
+    a run away from home reaches at most `pad` (two days: the travel days) beyond its first and last observation on the
+    side of a home run: workouts can be weeks apart, and a trip seen once in September must not put the six weeks before
+    it on Mountain time. The home zone fills everything else, including before the first and after the last observation.
     """
     obs = obs.dropna().sort_values("t_utc").reset_index(drop=True)
+    lo_end, hi_end = pd.Timestamp("1900-01-01"), pd.Timestamp("2200-01-01")
     if obs.empty:
-        return pd.DataFrame({"from_utc": [pd.Timestamp("1900-01-01")], "to_utc": [pd.Timestamp("2200-01-01")], "tz": [home_tz]})
-    rows = []
+        return pd.DataFrame({"from_utc": [lo_end], "to_utc": [hi_end], "tz": [home_tz]})
+    runs = []
     cur_tz, cur_first, cur_last = obs.tz[0], obs.t_utc[0], obs.t_utc[0]
     for t, z in zip(obs.t_utc[1:], obs.tz[1:]):
         if z == cur_tz:
             cur_last = t
             continue
-        rows.append([cur_tz, cur_first, cur_last])
+        runs.append([cur_tz, cur_first, cur_last])
         cur_tz, cur_first, cur_last = z, t, t
-    rows.append([cur_tz, cur_first, cur_last])
-    segs = []
-    for i, (z, a, b) in enumerate(rows):
-        start = pd.Timestamp("1900-01-01") if i == 0 else rows[i - 1][2] + (a - rows[i - 1][2]) / 2
-        end = pd.Timestamp("2200-01-01") if i == len(rows) - 1 else b + (rows[i + 1][1] - b) / 2
-        segs.append({"from_utc": start, "to_utc": end, "tz": z})
-    return pd.DataFrame(segs)
+    runs.append([cur_tz, cur_first, cur_last])
+    away = []
+    for i, (z, a, b) in enumerate(runs):
+        if z == home_tz:
+            continue
+        prev_home = i == 0 or runs[i - 1][0] == home_tz
+        next_home = i == len(runs) - 1 or runs[i + 1][0] == home_tz
+        lo = (a - pad) if prev_home else runs[i - 1][2] + (a - runs[i - 1][2]) / 2
+        hi = (b + pad) if next_home else b + (runs[i + 1][1] - b) / 2
+        if prev_home and i > 0:
+            lo = max(lo, runs[i - 1][2] + (a - runs[i - 1][2]) / 2)
+        if next_home and i < len(runs) - 1:
+            hi = min(hi, b + (runs[i + 1][1] - b) / 2)
+        away.append((lo, hi, z))
+    segs, t = [], lo_end
+    for lo, hi, z in away:
+        if lo > t:
+            segs.append({"from_utc": t, "to_utc": lo, "tz": home_tz})
+        segs.append({"from_utc": lo, "to_utc": hi, "tz": z})
+        t = hi
+    if t < hi_end:
+        segs.append({"from_utc": t, "to_utc": hi_end, "tz": home_tz})
+    # merge neighbours in the same zone
+    out = []
+    for g in segs:
+        if out and out[-1]["tz"] == g["tz"] and out[-1]["to_utc"] >= g["from_utc"]:
+            out[-1]["to_utc"] = g["to_utc"]
+        else:
+            out.append(g)
+    return pd.DataFrame(out)
 
 
 def rdp(x: np.ndarray, y: np.ndarray, eps: float) -> np.ndarray:

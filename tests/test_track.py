@@ -104,3 +104,22 @@ def test_forgot_to_stop_watch_without_drive_keeps_watch_distance():
     lat, lon = np.r_[lat1, lat2], np.r_[lon1, lon2]
     r = clean_track(t, lat, lon, np.full(len(t), 50.0), np.full(len(t), 4.0), TrackParams(), watch_distance_m=2600.0, duration_s=2400)
     assert r.stats["g4_cut"] and r.stats["distance_source"] == "watch" and r.stats["distance_m"] == 2600.0
+
+
+def test_a_trip_zone_covers_the_trip_not_the_weeks_around_it():
+    import pandas as pd
+
+    from stride.geo import tz_segments
+
+    T = pd.Timestamp
+    obs = pd.DataFrame({"t_utc": [T("2018-06-22 12:00"), T("2018-09-22 17:00"), T("2018-09-23 18:00"), T("2018-10-06 12:00"),
+                                  T("2018-12-09 10:00"), T("2018-12-15 10:00"), T("2018-12-26 15:00")],
+                        "tz": ["America/New_York", "America/Denver", "America/Denver", "America/New_York", "Europe/Paris", "Europe/Rome", "America/New_York"]})
+    s = tz_segments(obs, "America/New_York")
+    at = lambda t: s[(s.from_utc <= T(t)) & (s.to_utc > T(t))].tz.iloc[0]
+    assert at("2018-08-07") == "America/New_York" and at("2018-09-15") == "America/New_York"   # not the midpoint of a 3-month gap
+    assert at("2018-09-20 18:00") == "America/Denver" and at("2018-09-25 12:00") == "America/Denver"   # two travel days each side
+    assert at("2018-09-26") == "America/New_York"
+    assert at("2018-12-12") == "Europe/Paris" and at("2018-12-13") == "Europe/Rome"            # abroad, switches halfway
+    assert at("2018-12-17") == "Europe/Rome" and at("2018-12-18") == "America/New_York"
+    assert at("1950-01-01") == "America/New_York" and at("2100-01-01") == "America/New_York"

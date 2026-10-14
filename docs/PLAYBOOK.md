@@ -174,6 +174,13 @@ Never write a subtitle that assumes a direction ("faster, and easier on the hear
 - **Check sleep against itself.** Garmin Connect wrote asleep records in local time labelled as UTC (a 5-hour shift in
   winter, 3-minute "nights" around midnight) and, later, whole sleep windows with no time awake (8+ hours a night).
   Compare a source's asleep records with its own in-bed records before trusting either.
+- **Life milestones find errors both ways.** Matching the user's remembered dates with the data corrected two (a move a
+  year later than remembered; the return to the office a month earlier) and revealed others (a weekly office day, a
+  gym's start and end, an injury in a step-count dip, trip dates from route clusters and time zones). Offer what the
+  data shows, flag where it differs from memory, and let the user decide.
+- **Time zones between sparse observations.** Workouts can be weeks apart; a switch halfway between a June walk at home
+  and a September trip put six weeks at home on another zone (sleep two hours off). A trip's zone now covers its
+  workouts plus two travel days.
 - **Read the extremes**: a 22-hour "nap" was a misplaced record (naps are capped at 4 hours), and the longest night was
   a Garmin window until estimates were excluded from records.
 - **Medical signals need care in copy.** Sleep apnea notifications are 30-day screening windows; say what they are and
