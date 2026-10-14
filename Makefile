@@ -8,12 +8,12 @@ ZIP := $(firstword $(wildcard $(DATA)/export.zip) $(shell for z in $$(ls -t $(DA
 STRAVA_ZIP := $(shell for z in $$(ls -t $(DATA)/*.zip $(DATA)/raw/*.zip 2>/dev/null); do unzip -l "$$z" activities.csv >/dev/null 2>&1 && echo "$$z" && break; done)
 DEMO_DATA ?= demo-data
 
-.PHONY: help all setup unzip inventory parse strava clean enrich osm weather-compare derive export reports validate verify-clean app test dev demo demo-offline demo-digest site ci hashes
+.PHONY: help all setup unzip inventory parse strava clean enrich osm weather-compare derive export reports validate verify-clean sleep app test dev demo demo-offline demo-digest site ci hashes
 
 help: ## list the targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | sed -E 's/:.*## /\t/' | expand -t 18
 
-all: unzip inventory parse strava clean enrich derive export reports validate ## the whole pipeline, then the validation report
+all: unzip inventory parse strava clean enrich derive sleep export reports validate ## the whole pipeline, then the validation report
 
 setup: ## install Python (uv) and app (npm) dependencies
 	uv sync
@@ -58,6 +58,9 @@ weather-compare: ## how the weather sources agree with Apple's own temperatures
 
 derive: ## Phase 4: metrics, records, loops, fitness model
 	$(UV) python -m stride.derive
+
+sleep: ## Phase 4: one row per night from every sleep source (rules Z1-Z5), with overnight vitals
+	$(UV) python -m stride.sleep
 
 export: ## Phase 4: Parquet and route buffers for the app
 	$(UV) python -m stride.export
@@ -109,5 +112,5 @@ ci: ## what continuous integration runs: tests, the offline demo pipeline, an ap
 	$(MAKE) test
 	@chmod -R u+w $(DEMO_DATA)/raw 2>/dev/null; rm -rf $(DEMO_DATA)/stride.duckdb $(DEMO_DATA)/raw
 	$(UV) python -m stride.demo --out $(DEMO_DATA) --check demo/digest.json
-	STRIDE_OFFLINE=1 STRIDE_CONFIG=demo/config.yaml STRIDE_REPORTS=$(DEMO_DATA)/reports $(MAKE) unzip inventory parse strava clean enrich derive export DATA=$(DEMO_DATA)
+	STRIDE_OFFLINE=1 STRIDE_CONFIG=demo/config.yaml STRIDE_REPORTS=$(DEMO_DATA)/reports $(MAKE) unzip inventory parse strava clean enrich derive sleep export DATA=$(DEMO_DATA)
 	cd app && npm ci --no-audit --no-fund && npm run build

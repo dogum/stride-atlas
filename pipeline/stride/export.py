@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 import shutil
 
 import numpy as np
@@ -197,6 +198,31 @@ def export_routes(con, w: pd.DataFrame, home) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+# ------------------------------------------------------------------ sleep
+def export_sleep(con) -> dict | None:
+    """sleep_nights.parquet (one row per night) and sleep_runs.bin (each night's timeline as runs of one stage:
+    uint16 start minute after 18:00, uint16 minutes, uint16 stage code; seg_off/seg_n index it per night)."""
+    if not con.execute("SELECT count(*) FROM information_schema.tables WHERE table_name = 'sleep_nights'").fetchone()[0]:
+        for f in ("sleep_nights.parquet", "sleep_runs.bin"):
+            (OUT / f).unlink(missing_ok=True)
+        return None
+    runs = con.execute("SELECT date, start_min, minutes, stage FROM sleep_runs ORDER BY date, start_min").df()
+    nights = con.execute("SELECT date FROM sleep_nights ORDER BY date").df()
+    first = runs.groupby("date").size()
+    n = nights.date.map(first).fillna(0).astype(int)
+    idx = pd.DataFrame({"date": nights.date, "seg_off": np.r_[0, np.cumsum(n.to_numpy())[:-1]].astype(int), "seg_n": n.to_numpy()})
+    con.register("si_df", idx)
+    # 64-bit integers arrive in the browser as BigInt: everything countable here fits in 32 bits
+    cols = ", ".join(f'CAST(n."{c}" AS INTEGER) AS "{c}"' if t in ("BIGINT", "HUGEINT") else f'n."{c}"'
+                     for c, t, *_ in con.execute("DESCRIBE sleep_nights").fetchall() if c != "tz")
+    copy_parquet(con, f"""SELECT {cols}, CAST(i.seg_off AS INTEGER) AS seg_off, CAST(i.seg_n AS INTEGER) AS seg_n
+                          FROM sleep_nights n JOIN si_df i USING (date) ORDER BY n.date""", "sleep_nights.parquet")
+    con.unregister("si_df")
+    (OUT / "sleep_runs.bin").write_bytes(runs[["start_min", "minutes", "stage"]].to_numpy().astype("<u2").tobytes())
+    info = json.loads(con.execute("SELECT info FROM sleep_info").fetchone()[0])
+    return {"nights": int(len(nights)), "apnea_windows": info.get("apnea_windows", [])}
+
+
 # ------------------------------------------------------------------ streams
 def export_streams(con, w: pd.DataFrame, home) -> int:
     zc = zone_center(home)
@@ -334,7 +360,7 @@ def export_contours(con, places: pd.DataFrame, w: pd.DataFrame) -> list[dict]:
 def export_health(con) -> dict:
     from .health_report import RULES
 
-    log = con.execute("SELECT rule_id, table_name, row_key, field, note FROM cleaning_log").df()
+    log = con.execute("SELECT rule_id, table_name, row_key, field, after, note FROM cleaning_log").df()
     home = con.execute("SELECT lat, lon FROM home").fetchone()
     units = {
         "G1": int((log.rule_id == "G1").sum()), "G2": int((log.rule_id == "G2").sum()), "G3": int(log[log.rule_id == "G3"].row_key.nunique()),
@@ -343,6 +369,8 @@ def export_health(con) -> dict:
         "S1": int(log[log.rule_id == "S1"].row_key.str.startswith("steps:").sum()), "W1": int(((log.rule_id == "W1") & (log.field == "dropped")).sum()),
         "W2": int((log.rule_id == "W2").sum()), "W3": int((log.rule_id == "W3").sum()), "W4": int((log.rule_id == "W4").sum()), "W5": int((log.rule_id == "W5").sum()),
         "H1": int((log.rule_id == "H1").sum()), "P1": int((log.rule_id == "P1").sum()), "TZ": int(log[log.rule_id == "TZ"].row_key.nunique()),
+        **{k: int((log.rule_id == k).sum()) for k in ("Z1", "Z2", "Z3", "Z4")},
+        "Z5": int(pd.to_numeric(log[log.rule_id == "Z5"].after, errors="coerce").fillna(0).sum()),
     }
     rules = [{"id": k, "name": RULES[k][0], "unit": RULES[k][1], "why": RULES[k][2], "n": units.get(k, 0)} for k in RULES if units.get(k, 0)]
 
@@ -566,6 +594,15 @@ def run() -> dict:
         out["streams"] = export_streams(con, w, home)
     with Timer("contours"):
         contours = export_contours(con, places, w)
+    with Timer("sleep"):
+        sleep_meta = export_sleep(con)
+        out["sleep_nights"] = sleep_meta["nights"] if sleep_meta else 0
+    with Timer("milestones"):
+        from . import milestones
+
+        ms = milestones.load()
+        milestones.write_json(ms)
+        out["milestones"] = len(ms)
     with Timer("health, sensors, meta"):
         dump("health.json", export_health(con))
         dump("sensors.json", export_sensors(con))
@@ -584,7 +621,9 @@ def run() -> dict:
         meta = {
             "export_date": export_date, "home_tz": hs, "hr_max": float(params["hr_max"]), "hr_max_source": params["hr_max_source"], "hr_max_file_era": info.get("hr_max_file_era"),
             "zones_pct": paths.config()["heart_rate"]["zones_pct_of_max"], "year_min": year_min(con), "places": pl, "contours": contours,
-            "eddington": info.get("eddington"), "weather_model": info.get("weather_model"), "fitness_model_start": info.get("fitness_model_start"),
+            "sleep": sleep_meta, "eddington": info.get("eddington"),
+            # which data folder these files came from (relative), so the dev server edits that folder's milestones
+            "data_dir": paths.DATA.relative_to(paths.ROOT).as_posix() if paths.DATA.is_relative_to(paths.ROOT) else None, "weather_model": info.get("weather_model"), "fitness_model_start": info.get("fitness_model_start"),
             "counts": {"workouts": int(len(w)), "routes": int(len(ri)), "route_points": out["route_points"], "streams": out["streams"]},
             "enrich": {k: el.get(k) for k in ("weather_calls", "places")},
             "sources": sources_used(con, export_date) + [

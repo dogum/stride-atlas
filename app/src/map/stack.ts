@@ -11,6 +11,7 @@ const d3: any = d3_;
 import { F, G, GPS_TYPES, REG, S } from '../store';
 import { MAP_RAMPS, ft, fInt } from '../core';
 import { loadContours } from '../data';
+import { KINDS, MS, msLabel, showMs } from '../milestones';
 
 export const STACK_MODES = [{ key: 'date', label: 'Date' }, { key: 'hour', label: 'Time of day' }, { key: 'ele', label: 'Elevation' }];
 export type StackMode = 'date' | 'hour' | 'ele';
@@ -31,7 +32,7 @@ export function stackPlace(): number {
 }
 
 type Piece = { w: any; date: Float32Array; hour: Float32Array; ele: Float32Array; flat: Float32Array };
-type Guide = { z: Record<StackMode, number>; label: string; mode: StackMode };
+type Guide = { z: Record<StackMode, number>; label: string; mode: StackMode; color?: number[] };
 
 export class Stack {
   deck: Deck | null = null;
@@ -79,7 +80,7 @@ export class Stack {
 
   async build(): Promise<boolean> {
     const place = stackPlace();
-    const key = `${place}|${S.share}|${G.routeEle ? 1 : 0}`;
+    const key = `${place}|${S.share}|${G.routeEle ? 1 : 0}|${showMs() ? MS.list.map(m => `${m.d}:${m.d2 ?? ''}:${m.kind}:${msLabel(m)}`).join(',') : ''}`;
     if (key === this.key) return !!this.pieces.length;
     this.key = key;
     const xy = G.routeXY, gap = G.routeGap, sh = G.routeShare, ele = G.routeEle, tim = G.routeTime;
@@ -159,6 +160,14 @@ export class Stack {
       const d = Math.round((Date.UTC(y, 0, 1) - G.D0) / 864e5); if (d >= d1) break;
       G2.push({ z: { ...zero, date: (d - d0) / (d1 - d0) * H }, label: String(y), mode: 'date' });
     }
+    // life milestones as coloured rings at their date's height, labelled on the far corner
+    if (showMs()) for (const m of MS.list) {
+      for (const [d, lab] of [[m.d, S.share && !m.public ? '' : msLabel(m)], ...(m.d2 != null ? [[m.d2, '']] : [])] as [number, string][]) {
+        if (d < d0 || d >= d1) continue;
+        const c = d3.color(KINDS[m.kind].c)!.rgb();
+        G2.push({ z: { ...zero, date: (d - d0) / (d1 - d0) * H }, label: lab, mode: 'date', color: [c.r, c.g, c.b] });
+      }
+    }
     for (const h of [0, 6, 12, 18, 24]) G2.push({ z: { ...zero, hour: h / 24 * H }, label: h === 0 || h === 24 ? 'midnight' : h === 12 ? 'noon' : h < 12 ? `${h} am` : `${h - 12} pm`, mode: 'hour' });
     const topFt = ft(base + (H * 1.05) / (k * this.exag)), baseFt = ft(base);
     const stepFt = [50, 100, 200, 250, 500, 1000, 2000].find(s => (topFt - baseFt) / s <= 6) ?? 5000;
@@ -204,7 +213,8 @@ export class Stack {
       new PathLayer({ id: 'contours', ...base, data: this.contours, getPath: (d: any) => d[m], getWidth: (d: any) => d.major ? 1 : 0.6,
         getColor: (d: any) => [151, 165, 187, m === 'ele' ? (d.major ? 110 : 60) : (d.major ? 40 : 20)], parameters: FLAT,
         transitions: { ...move, getColor: 900 }, updateTriggers: { getPath: m, getColor: m } } as any),
-      new PathLayer({ id: 'guides', ...base, data: guides, getPath: (d: any) => frame(d.z[m]), getWidth: 0.8, getColor: [151, 165, 187, 34], parameters: FLAT, updateTriggers: { getPath: m } } as any),
+      new PathLayer({ id: 'guides', ...base, data: guides, getPath: (d: any) => frame(d.z[m]), getWidth: (d: any) => d.color ? 1.4 : 0.8,
+        getColor: (d: any) => d.color ? [...d.color, 170] : [151, 165, 187, 34], parameters: FLAT, updateTriggers: { getPath: m, getColor: this.key } } as any),
       new PathLayer({ id: 'axis', ...base, data: [{ p: [[-HALF, -HALF, 0], [-HALF, -HALF, m === 'ele' ? Math.max(...guides.map(g => g.z.ele), 10) : H]] }], getPath: (d: any) => d.p, getWidth: 1, getColor: [151, 165, 187, 110], parameters: FLAT, updateTriggers: { getPath: m } } as any),
       // the shadow on the floor: where, without when
       new PathLayer({ id: 'shadow', ...base, ...filt, data: this.pieces, getPath: (d: any) => d.flat, getWidth: 1, widthMinPixels: 0.6, opacity: alpha * 0.07,
@@ -214,9 +224,9 @@ export class Stack {
       new PathLayer({ id: 'routes', ...base, ...filt, data: this.pieces, getPath: (d: any) => d[m], getWidth: 1.2, widthMinPixels: 0.8, opacity: alpha,
         getColor: (d: any) => this.colorFor(d.w), parameters: ADD, transitions: { ...move, getColor: 900 },
         updateTriggers: { ...filt.updateTriggers, getPath: m, getColor: [m, this.key] } } as any),
-      new TextLayer({ id: 'labels', ...base, positionFormat: undefined, data: guides, getPosition: (d: any) => [-HALF - 6, -HALF - 6, d.z[m]], getText: (d: any) => d.label,
-        getSize: 12, getColor: [195, 205, 219, 210], fontFamily: '"Overpass Mono Variable", ui-monospace, monospace', fontWeight: 500,
-        getTextAnchor: 'end', getAlignmentBaseline: 'center', characterSet: 'auto', parameters: FLAT, updateTriggers: { getPosition: m } } as any),
+      new TextLayer({ id: 'labels', ...base, positionFormat: undefined, data: guides.filter(g => g.label), getPosition: (d: any) => d.color ? [HALF + 6, HALF + 6, d.z[m]] : [-HALF - 6, -HALF - 6, d.z[m]], getText: (d: any) => d.label,
+        getSize: (d: any) => d.color ? 12.5 : 12, getColor: (d: any) => d.color ? [...d.color, 240] : [195, 205, 219, 210], fontFamily: '"Overpass Mono Variable", ui-monospace, monospace', fontWeight: 500,
+        getTextAnchor: (d: any) => d.color ? 'start' : 'end', getAlignmentBaseline: 'center', characterSet: 'auto', parameters: FLAT, updateTriggers: { getPosition: m, getText: this.key, getColor: this.key } } as any),
     ];
     this.deck.setProps({ layers: L });
   }

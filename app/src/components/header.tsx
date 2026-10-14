@@ -4,6 +4,8 @@ import * as d3_ from 'd3';
 const d3: any = d3_;
 import { DEMO, G, GPS_TYPES, MODE, S, emit, useWatch } from '../store';
 import { CREDIT } from '../credits';
+import { MilestonesButton } from './milestones';
+import { SLEEP_CHAPTERS } from './sleep';
 import { TYPE, fInt, fK } from '../core';
 
 export const CHAPTERS = [['atlas', 'Atlas'], ['stack', 'In 3D'], ['rhythm', 'Rhythm'], ['volume', 'Volume'], ['effort', 'Pace & effort'], ['terrain', 'Terrain & weather'], ['records', 'Records'], ['bests', 'Bests'], ['closeup', 'Close-up'], ['pool', 'Pool & weights'], ['health', 'Data health'], ['watches', 'Watches'], ['about', 'About']];
@@ -67,8 +69,25 @@ function ThemeToggle() {
   return <button className="ghost" type="button" title="Theme: follow the system, dark or light" onClick={() => setT(THEMES[(THEMES.indexOf(t) + 1) % 3])}>{t === 'auto' ? 'Auto theme' : t === 'dark' ? 'Dark' : 'Light'}</button>;
 }
 
+// two pages: the activity dashboard and the sleep deep dive, switched by the URL hash
+export function setView(v: 'activity' | 'sleep') {
+  if (S.view === v) return;
+  S.view = v; history.replaceState(null, '', v === 'sleep' ? '#sleep' : location.pathname + location.search);
+  scrollTo(0, 0); emit('view');
+}
+function Views() {
+  useWatch(['view']);
+  return (
+    <nav className="views" aria-label="Pages">
+      {([['activity', 'Activity'], ['sleep', 'Sleep']] as const).map(([k, l]) => (
+        <a key={k} href={k === 'sleep' ? '#sleep' : '#'} aria-current={S.view === k ? 'page' : undefined} onClick={e => { e.preventDefault(); setView(k); }}>{l}</a>
+      ))}
+    </nav>
+  );
+}
+
 export function Header() {
-  useWatch(['filter', 'share']);
+  useWatch(['filter', 'share', 'view']);
   const lbl = S.y0 === G.Y0 && S.y1 === G.Y1 ? 'Years' : S.y0 === S.y1 ? `${S.y0}` : `${S.y0}–${String(S.y1).slice(2)}`;
   const exp = G.meta?.export_date?.slice(0, 10);
   return (
@@ -81,18 +100,20 @@ export function Header() {
           <span className="name">Stride Atlas</span>
           <span className="badge" title={DEMO ? 'A synthetic export for a person who does not exist' : 'Built from your Apple Health export on this computer'}>{exp ? `${DEMO ? 'Demo data' : 'Your data'} · ${new Date(exp + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}` : 'Your data'}</span>
           {S.share && <span className="badge" title="Route ends near home are hidden">Share mode</span>}
+          <Views />
         </div>
         <div className="filters">
           <div className="fgroup"><span className="flabel" id="yrLbl">{lbl}</span><YearStrip /></div>
-          <div className="fgroup"><span className="flabel">Activities</span><Chips /></div>
+          {S.view !== 'sleep' && <div className="fgroup"><span className="flabel">Activities</span><Chips /></div>}
           <div className="bar-tools">
+            <MilestonesButton />
             <button className="ghost" type="button" onClick={() => { S.y0 = G.Y0; S.y1 = G.Y1; S.types = new Set(GPS_TYPES); S.place = 0; S.effortType = 'walk'; applyFilter(); emit('place'); }}>Reset</button>
             <button className="ghost" type="button" aria-pressed={S.share} title="For screenshots: hides the first and last 200 m of routes that start or end near home, and a 300 m zone around it" onClick={() => { S.share = !S.share; emit('share', 'filter'); }}>Share mode</button>
             <ThemeToggle />
           </div>
         </div>
       </div>
-      <Toc />
+      <Toc key={S.view} />
     </header>
   );
 }
@@ -101,8 +122,9 @@ export function Header() {
 function Toc() {
   const nav = useRef<HTMLElement>(null);
   const [cur, setCur] = useState(0);
+  const chapters = S.view === 'sleep' ? SLEEP_CHAPTERS : CHAPTERS;
   useEffect(() => {
-    const secs = CHAPTERS.map(([id]) => document.getElementById(id));
+    const secs = chapters.map(([id]) => document.getElementById(id));
     let raf = 0;
     const onScroll = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { let i = 0; secs.forEach((s, k) => { if (s && s.getBoundingClientRect().top < 160) i = k; }); setCur(i); }); };
     addEventListener('scroll', onScroll, { passive: true }); onScroll();
@@ -114,7 +136,7 @@ function Toc() {
   }, [cur]);
   return (
     <nav className="toc" ref={nav} aria-label="Chapters">
-      {CHAPTERS.map(([id, label], k) => <a key={id} href={'#' + id} className={(k === cur ? 'cur ' : '') + (k < cur ? 'done' : '')}>{label}</a>)}
+      {chapters.map(([id, label], k) => <a key={id} href={'#' + id} className={(k === cur ? 'cur ' : '') + (k < cur ? 'done' : '')}>{label}</a>)}
     </nav>
   );
 }

@@ -56,6 +56,29 @@ Rules run in the order listed.
 
 **P1. Laps.** Use lap events and the lap length. Drop laps under 5 s (wall touches). SWOLF per lap = strokes + seconds; per swim = the median of freestyle laps.
 
+## Sleep
+
+Sleep is assembled per night in `pipeline/stride/sleep.py`; every change is a `cleaning_log` row.
+
+**Z1. Nights and naps.** A night runs from 18:00 to 18:00 the next day in the local time zone where the sleep happened,
+and is named by the evening's date. Asleep stretches more than 90 minutes apart are separate sessions; every session
+that starts between 20:00 and 08:00 belongs to the night (time between them counts as awake), and the night needs at
+least an hour asleep. Other daytime sessions of 10 minutes to 4 hours are naps, counted separately.
+
+**Z2. One source per night.** When several sources recorded the same night, keep one: a source with stages, then one
+with any asleep time, then one with time in bed only; the watch before other sources; then the most asleep minutes.
+Nights are never added together. Nights with time in bed only keep that (`asleep` stays null, not zero).
+
+**Z3. Within a source.** Records of one source are merged on a minute grid where the more specific stage wins (Apple
+writes `InBed` under the stages). A source whose records span more than 20 hours in one night is dropped for that night.
+
+**Z4. Local time written as UTC.** An asleep record that lies inside none of its own source's in-bed records, but
+inside one once moved by the local UTC offset, is moved (Garmin Connect, 2017–18).
+
+**Z5. Sleep windows are estimates.** A source whose nights without stages have a median under 10 minutes awake (and at
+least 7 such nights) is timing a sleep window, not measuring sleep: its nights are marked `est`, shown faintly, and kept
+out of averages and records.
+
 ## The data-health report
 
 `reports/02_data_health.html` mirrors the app's Data health chapter:

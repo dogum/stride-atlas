@@ -57,7 +57,9 @@ Types this project uses (verify the exact identifiers in Phase 0):
 | `HKQuantityTypeIdentifierTimeInDaylight` | min | optional |
 | `HKQuantityTypeIdentifierAppleSleepingWristTemperature` | degF | sensor timeline |
 | `HKQuantityTypeIdentifierDistanceSwimming`, `SwimmingStrokeCount` | yd, count | swims, SWOLF |
-| `HKCategoryTypeIdentifierSleepAnalysis` | — | sensor timeline only |
+| `HKCategoryTypeIdentifierSleepAnalysis` | — | the Sleep page (see Sleep below) |
+| `HKQuantityTypeIdentifierAppleSleepingBreathingDisturbances` | count | the Sleep page, overnight vitals |
+| `HKCategoryTypeIdentifierSleepApneaEvent` | — | the Sleep page: 30-day notification windows |
 
 ### `<Workout>`
 
@@ -105,6 +107,29 @@ One per day: `dateComponents`, active energy and goal, exercise minutes and goal
 - Roughly one point per second. Times are UTC. `ele` is meters; `speed` is m/s; `hAcc` and `vAcc` are accuracy estimates in meters (lower is better).
 - File names use the local start time (`route_2024-05-11_7.42am.gpx`) and can collide when two workouts start in the same minute; the export appends a suffix. Always join through the `FileReference` path.
 - Store as `route_points(workout_id, seq, t_utc, lat, lon, ele_m, speed_ms, course, hacc_m, vacc_m)`.
+
+## Sleep
+
+`HKCategoryTypeIdentifierSleepAnalysis` records carry a stage in `value` (`HKCategoryValueSleepAnalysis…`): `InBed`,
+`AsleepUnspecified` (older exports: `Asleep`), `AsleepCore`, `AsleepDeep`, `AsleepREM`, `Awake`. One export usually holds
+several eras and sources at once, and they overlap:
+
+| Era | Source (sourceName) | What it writes |
+|---|---|---|
+| any | another watch through its app (`Connect` for Garmin, Fitbit, Oura…) | its own sleep; Garmin's 2017–18 records are a window: `InBed` and `Asleep…` identical to the minute, almost no `Awake` |
+| any | sleep apps (`AutoSleep`, `Pillow`…) | `Asleep…` stretches, often `InBed` |
+| iOS 13–17 | the iPhone (`Clock` bedtime, then the Sleep schedule as `iPhone`) | `InBed` only, from the phone's bedtime and alarm and its use |
+| watchOS 7–8 (2020–22) | the Apple Watch | `AsleepUnspecified` stretches; time awake is the gap between them |
+| watchOS 9+ (autumn 2022) | the Apple Watch | `AsleepCore`, `AsleepDeep`, `AsleepREM`, `Awake` and `InBed` |
+
+Two watches can record the same night after an upgrade, and a renamed watch is a new `sourceName` (the non-breaking
+space trap again). While asleep the watch also writes heart rate, HRV, `RespiratoryRate`, `OxygenSaturation`,
+`AppleSleepingWristTemperature` (one value per night, Series 8 / Ultra and later) and, from watchOS 11,
+`AppleSleepingBreathingDisturbances` per night. `HKCategoryTypeIdentifierSleepApneaEvent` records are Apple's sleep
+apnea notifications: each covers a 30-day evaluation window, not a night.
+
+**Trap.** Garmin Connect wrote some `Asleep…` records in local time labelled as UTC: they sit exactly the time-zone
+offset away from the same app's `InBed` record (rule Z4).
 
 ## Sensor timeline
 

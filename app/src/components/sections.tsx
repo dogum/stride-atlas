@@ -74,7 +74,7 @@ export function AtlasSection() {
             <div className="glass"><Seg label="Color routes by" options={MODES} value={mode} onPick={k => { S.colorBy = k; emit('colorBy'); atlas.current?.render(); }} /></div>
             <div className="glass places"><Seg label="Place" options={[{ key: -1, label: `Everywhere ${fK(n)}`, disabled: !n }, ...places.map((p: any) => ({ key: p.id, label: `${p.id === 0 ? 'Home' : p.name.split(',')[0]} ${fK(counts.get(p.id) || 0)}`, disabled: !counts.get(p.id) }))]} value={S.place} onPick={k => { S.place = k; setCard(null); emit('place'); }} /></div>
           </div>
-          <div className={'counter' + (play.on ? ' on' : '')}><div className="big">{play.date}</div><div className="sm">{play.sub}</div></div>
+          <div className={'counter' + (play.on ? ' on' : '')}><div className="big">{play.date}</div><div className="sm">{play.sub}</div>{play.note && <div className="atlas-ms" style={{ color: play.noteC }}>◆ {play.note}</div>}</div>
           <div className="glass map-bl"><span className="lbl">{L[0]}</span><div className="map-legend"><span>{L[1]}</span><span className="bar-r" style={{ background: gradientCSS(MAP_RAMPS[mode]) }} /><span>{L[2]}</span></div></div>
           <div className="map-br">
             <div className="glass"><Seg label="Basemap" options={[{ key: 'contours', label: 'Contours' }, { key: 'streets', label: 'Streets', disabled: S.place !== 0 }, { key: 'none', label: 'Plain' }]} value={S.basemap} onPick={k => { S.basemap = k; emit('basemap'); }} /></div>

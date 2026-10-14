@@ -5,6 +5,7 @@ import * as d3_ from 'd3';
 const d3: any = d3_;
 import { F, G, S } from '../store';
 import { MONTHS, Out, TIP, armArrival, css, dayDate, dayOfISO, emptyState, f1, fDate, fDateShort, fInt, fK, fPace, frame, fTime, typeColor, typeLabel, xAxis, yGrid, yearTicks, daySpan } from '../core';
+import { drawMilestones } from '../milestones';
 import { routeSegments } from '../data';
 import { openCloseup } from './closeup';
 
@@ -42,6 +43,7 @@ export function drawProg(el: HTMLElement): Out {
   f.g.append('g').attr('class', 'gridl').call(d3.axisLeft(yS).ticks(5).tickSize(-f.iw).tickFormat('' as any));
   f.g.append('g').attr('class', 'ax noline').call(d3.axisLeft(yS).ticks(5).tickSize(0).tickPadding(8).tickFormat(fTime as any));
   xAxis(f.g, x, f.ih, { values: yearTicks(F.years, daySpan()[0]), fmt: (v: number) => dayDate(v).getUTCFullYear() });
+  drawMilestones(f.g, x, f.ih, { labels: true });
   const col = typeColor(BS.type);
   f.g.append('g').attr('class', 'a-reveal').selectAll('circle').data(ef.filter((e: any) => e.t <= yS.domain()[0])).join('circle').attr('cx', (e: any) => x(e.w.d)).attr('cy', (e: any) => yS(e.t)).attr('r', 2.4).style('fill', col).style('opacity', .32);
   const stair = prs.map((e: any) => [x(e.w.d), yS(e.t)]); stair.push([f.iw, stair[stair.length - 1][1]]);
@@ -163,6 +165,7 @@ export function drawFF(el: HTMLElement): Out {
   const x = d3.scaleLinear(d3.extent(F.days, (r: any) => r.d) as any, [0, f.iw]);
   const yS = d3.scaleLinear([0, d3.max(rs, (r: any) => Math.max(r.ctl, r.atl))! * 1.05], [f.ih, 0]).nice();
   yGrid(f.g, yS, f.iw, 4, (v: number) => v);
+  drawMilestones(f.g, x, f.ih, { labels: true, y0: 4 });
   f.g.append('path').datum(rs).attr('class', 'a-line').attr('d', d3.line().x(r => x(r.d)).y(r => yS(r.atl)).curve(d3.curveMonotoneX)).style('fill', 'none').style('stroke', cA).style('stroke-width', 1.4).style('opacity', .75);
   f.g.append('path').datum(rs).attr('class', 'a-fade').attr('d', d3.area().x(r => x(r.d)).y0(f.ih).y1(r => yS(r.ctl)).curve(d3.curveMonotoneX)).style('fill', cF).style('opacity', .12);
   f.g.append('path').datum(rs).attr('class', 'a-line').attr('d', d3.line().x(r => x(r.d)).y(r => yS(r.ctl)).curve(d3.curveMonotoneX)).style('fill', 'none').style('stroke', cF).style('stroke-width', 2.4);
@@ -173,6 +176,7 @@ export function drawFF(el: HTMLElement): Out {
   const y2 = d3.scaleLinear(d3.extent(rs, (r: any) => r.tsb) as any, [f2.ih, 0]).nice();
   yGrid(f2.g, y2, f2.iw, 3, (v: number) => (v > 0 ? '+' : '') + v);
   xAxis(f2.g, x, f2.ih, { values: yearTicks(F.years, F.days[0].d), fmt: (v: number) => dayDate(v).getUTCFullYear() });
+  drawMilestones(f2.g, x, f2.ih, { marks: false });
   const cid = 'ffclip' + Math.round(Math.random() * 1e6);
   const defs = f2.svg.append('defs');
   defs.append('clipPath').attr('id', cid + 'a').append('rect').attr('x', 0).attr('y', 0).attr('width', f2.iw).attr('height', y2(0));
@@ -230,6 +234,7 @@ export function drawGround(el: HTMLElement): Out {
   const yS = d3.scaleLinear([Math.max(0, c0 * 0.96), c1 * 1.04], [f.ih, 0]).nice();
   yGrid(f.g, yS, f.iw, 4, (v: number) => fInt(v) + ' mi');
   xAxis(f.g, x, f.ih, { values: yearTicks(F.years, daySpan()[0]), fmt: (v: number) => dayDate(v).getUTCFullYear() });
+  drawMilestones(f.g, x, f.ih, { labels: true });
   f.g.append('path').datum(out).attr('class', 'a-fade').attr('d', d3.area().x(o => x(o.d)).y0(f.ih).y1(o => yS(o.cum)).curve(d3.curveStepAfter)).style('fill', 'var(--s3)').style('opacity', .14);
   f.g.append('path').datum(out).attr('class', 'a-line').attr('d', d3.line().x(o => x(o.d)).y(o => yS(o.cum)).curve(d3.curveStepAfter)).style('fill', 'none').style('stroke', 'var(--s3)').style('stroke-width', 2.2);
   const byY = d3.rollups(out, v => ({ nw: d3.sum(v, (o: any) => o.nw), mi: d3.sum(v, (o: any) => o.w.dist), end: v[v.length - 1] }), (o: any) => o.w.y);

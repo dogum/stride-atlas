@@ -30,7 +30,7 @@ def digest(root: Path) -> dict[str, str]:
 def main() -> None:
     scratch = Path(tempfile.mkdtemp(prefix="stride-clean-", dir=os.environ.get("TMPDIR")))
     env = dict(os.environ, STRIDE_DB=str(scratch / "stride.duckdb"), STRIDE_APP_DATA=str(scratch / "app_data"), STRIDE_REPORTS=str(scratch / "reports"))
-    steps = [["parse", "--force"], ["strava", "--force"], ["clean"], ["enrich"], ["osm"], ["derive"], ["export"]]
+    steps = [["parse", "--force"], ["strava", "--force"], ["clean"], ["enrich"], ["osm"], ["derive"], ["sleep"], ["export"]]
     try:
         for s in steps:
             print(f"clean-room: {s[0]}", flush=True)

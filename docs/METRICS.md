@@ -150,6 +150,28 @@ The routes around one place (the atlas's place; home when the atlas shows everyw
 
 Share mode applies as on the atlas: hidden points split the routes, and the floor shadow carries the same gaps.
 
+## Sleep
+
+One row per night in `sleep_nights` (rules Z1–Z5 in `docs/CLEANING.md`). Clock times are hours on an 18-to-42 axis
+(22.5 is 10:30 pm; 30 is 6 am the next morning).
+
+- **Fell asleep / woke**: the first and last minute asleep in the night's sessions. **Asleep**: minutes in any asleep
+  stage between them; **awake**: the rest of that span. **In bed**: the source's `InBed` records around it, when there
+  are any; **latency** = fell asleep − in bed (within 4 hours).
+- **Stages**: deep, core, REM and awake minutes (watchOS 9 and later). **Woke up**: awake runs of 2 minutes or more.
+- **Overnight vitals**: inside the night's sleep, watch samples only: lowest and median heart rate, median HRV, breathing
+  rate and blood oxygen (median and lowest). Wrist temperature and breathing disturbances are the watch's one value per
+  night; the wrist temperature **change** is the night minus the median of the previous 30 nights.
+- **Medians and records** use measured nights only (not estimates, not time in bed only). Trend lines are rolling
+  medians over nights (vitals: rolling means) and break across gaps of more than 30 days.
+
+## Life milestones
+
+`data/milestones.yaml` (format in `milestones.example.yaml`): a date or a month, an optional end for a period, a label,
+a kind. Drawn on every chart with a date axis on both pages (a faint line, or a band for a period, and a marker to
+hover); in the map replay as the replay passes the date; as a coloured ring in the 3D date stack. Share mode hides the
+label unless the milestone is `public: true`. They are context only: no metric uses them.
+
 ## Chart catalog
 
 | Chapter | Panel (id) | Data |
@@ -166,3 +188,9 @@ Share mode applies as on the atlas: hidden points split the routes, and the floo
 | Pool and weights | `swim`, `swolf`, `lift` | swim laps, strength sessions |
 | Data health | `rules`, `track`, `dedupe` | `cleaning_log`, raw and cleaned tracks, per-minute step series for one day |
 | Watches | `sensors` | `sensor_availability`, `devices` |
+| Sleep · Nights | `barcode`, tiles | `sleep_nights`, `sleep_runs` (each night's timeline as runs of one stage) |
+| Sleep · Duration and timing | `sdur`, `sclock`, `sweek`, `smonth` | `sleep_nights` |
+| Sleep · Stages | `sstage`, `styp` | `sleep_nights`, `sleep_runs` (staged nights) |
+| Sleep · One night | `night` | one night's runs and vitals |
+| Sleep · Overnight vitals | `svit`, `stemp`, `sbreath` | `sleep_nights` vitals; apnea notification windows |
+| Sleep · Records, Sources | `srecords`, `ssrc` | `sleep_nights`; `cleaning_log` rules Z1–Z5 |

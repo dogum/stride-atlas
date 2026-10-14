@@ -5,6 +5,7 @@ import * as d3_ from 'd3';
 const d3: any = d3_;
 import { F, G, S } from '../store';
 import { MONTHS, Out, TIP, TYPE, ZONES, fDateISO, armArrival, css, dayDate, divInterp, emptyState, f1, fDate, fInt, fK, fPace, fPct, frame, gradientCSS, ordinalRamp, rollingMedian, tempColor, typeLabel, xAxis, yGrid, yearTicks, daySpan } from '../core';
+import { drawMilestones } from '../milestones';
 import { openCloseup } from './closeup';
 
 export const EFFORT_TYPES = [{ key: 'walk', label: 'Walks' }, { key: 'run', label: 'Runs' }, { key: 'hike', label: 'Hikes' }];
@@ -30,6 +31,7 @@ export function drawPace(el: HTMLElement): Out {
   paceAxis(f, yS);
   const yt = yearTicks(F.years, daySpan()[0]);
   xAxis(f.g, x, f.ih, { values: yt, fmt: (v: number) => dayDate(v).getUTCFullYear() });
+  drawMilestones(f.g, x, f.ih, { labels: true });
   const tc = tempColor();
   const clamp = (p: number) => Math.max(yS.domain()[1], Math.min(yS.domain()[0], p));
   f.g.append('g').attr('class', 'a-reveal').selectAll('circle').data(ws).join('circle').attr('cx', (w: any) => x(w.d)).attr('cy', (w: any) => yS(clamp(w.pace))).attr('r', 2.4).style('fill', (w: any) => w.temp != null ? tc(w.temp) : 'var(--ink-4)').style('opacity', .75);
@@ -259,6 +261,7 @@ export function bandChart(el: HTMLElement, rows: any[], opts: any) {
   yGrid(f.g, yS, f.iw, 3, opts.fmt || ((v: number) => v));
   // narrow charts get two-digit years so nine labels still fit
   if (opts.axis) { const yt = yearTicks(F.years, F.days[0].d); const narrow = f.iw / Math.max(1, yt.length) < 46; xAxis(f.g, x, f.ih, { values: yt, fmt: (v: number) => narrow ? `'${String(dayDate(v).getUTCFullYear()).slice(2)}` : dayDate(v).getUTCFullYear() }); }
+  drawMilestones(f.g, x, f.ih, { y0: -8 });
   // before the first sample the metric did not exist yet (sensor timeline): say so instead of drawing zeros
   const firstD = has[0].d;
   if (firstD - F.days[0].d > 60) {

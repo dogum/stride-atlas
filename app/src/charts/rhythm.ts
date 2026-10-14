@@ -4,8 +4,9 @@ import * as d3_ from 'd3';
 const d3: any = d3_;
 import { F, G, S } from '../store';
 import {
-  DOWS, MONTHS, Out, TIP, armArrival, css, emptyState, f1, fClock, fDate, fDur, fHourShort, fInt, fPct, frame, monthTicks, seqInterp, typeColor, typeLabel, xAxis,
+  DOWS, MONTHS, Out, TIP, armArrival, css, dayDate, emptyState, f1, fClock, fDate, fDur, fHourShort, fInt, fPct, frame, monthTicks, seqInterp, typeColor, typeLabel, xAxis,
 } from '../core';
+import { KINDS, MS, msLabel, msWhen, showMs } from '../milestones';
 
 // ---------- calendar ----------
 export const CAL_METRICS = [
@@ -49,6 +50,13 @@ export function drawCal(el: HTMLElement): Out {
         TIP.show(e, `${DOWS[d.dow]} ${fDate(d.d)}`, [[M.label, M.get(d) == null ? 'not recorded' : M.f(M.get(d))], ...ws.map((w: any) => [typeLabel(w) + (w.outdoor ? '' : w.setting === 'indoor' ? ' (indoor)' : ''), w.dist > 0.05 ? f1(w.dist) + ' mi' : fDur(w.dur), typeColor(w.type)])]);
       })
       .on('pointerleave', TIP.hide);
+    if (showMs()) for (const m of MS.list) {
+      const y0 = Math.round((Date.UTC(y, 0, 1) - G.D0) / G.DAY), y1 = Math.round((Date.UTC(y + 1, 0, 1) - G.D0) / G.DAY) - 1;
+      const c = KINDS[m.kind].c, col = (d: number) => Math.floor((d - y0 + jan1) / 7) * cell, row = (d: number) => dayDate(d).getUTCDay() * cell;
+      if (m.d2 != null && m.d2 >= y0 && m.d <= y1) gg.append('rect').attr('x', col(Math.max(m.d, y0))).attr('width', Math.max(2, col(Math.min(m.d2, y1)) - col(Math.max(m.d, y0)) + cell - 2)).attr('y', 7 * cell + 1).attr('height', 2).attr('rx', 1).style('fill', c).style('opacity', 0.8);
+      if (m.d >= y0 && m.d <= y1) gg.append('rect').attr('x', col(m.d) - 1.5).attr('y', row(m.d) - 1.5).attr('width', cell + 1).attr('height', cell + 1).attr('rx', 3).style('fill', 'none').style('stroke', c).style('stroke-width', 1.8)
+        .on('pointermove', (e: any) => TIP.show(e, msLabel(m), [[KINDS[m.kind].label, msWhen(m), c]])).on('pointerleave', TIP.hide);
+    }
     if (r === 0) MONTHS.forEach((mn, mi) => { const doy = Math.round((Date.UTC(y, mi, 1) - Date.UTC(y, 0, 1)) / G.DAY); gg.append('text').attr('class', 'ax').attr('x', Math.floor((doy + jan1) / 7) * cell).attr('y', -6).style('fill', 'var(--ink-4)').style('font-family', 'var(--font-mono)').style('font-size', '10px').text(mn); });
   });
   armArrival(el);

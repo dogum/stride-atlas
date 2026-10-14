@@ -27,7 +27,21 @@ Twelve chapters, all computed from your data:
 | **Close-up.** One workout second by second: the route coloured by pace, elevation, pace and heart-rate streams, mile splits with grade-adjusted pace. | **Pool and weights.** Swims with laps, strokes and SWOLF; strength sessions; indoor rides. |
 | **Data health.** Every cleaning rule and how often it fired, one route raw against cleaned, why steps need deduplicating. | **Watches.** When each device and each metric first appeared, so a missing value is never read as a zero. |
 
-<p align="center"><img src="docs/images/stack.png" alt="Every route around home stacked in 3D by date" width="100%"></p>
+<p align="center"><img src="docs/images/stack.png" alt="Every route around home stacked in 3D by date, with life milestones as coloured rings" width="100%"></p>
+
+**And a Sleep page.** Every night since your first sleep record as one picture, coloured by stage; hours asleep and when
+you fall asleep and wake, year by year and night of the week; deep, core and REM, and a typical night lined up at the
+moment you fell asleep; one night stage by stage; heart rate, HRV, breathing, blood oxygen, wrist temperature and
+breathing disturbances measured while asleep; records; and where each night came from. Exports mix a lot of sleep
+sources (another watch, sleep apps, the phone's bedtime schedule, the Apple Watch before and after stages), often for
+the same night: each night keeps one, and old sleep-window trackers are marked as estimates rather than read as sleep.
+
+<p align="center"><img src="docs/images/sleep.png" alt="Every night since 2018, one column per night coloured by sleep stage, with life milestones" width="100%"></p>
+
+**Life milestones.** Add the dates that explain your data (a child born, working from home, a new commute, a move, an
+injury) and they appear faintly on every chart with a date axis, on both pages, in the map replay and as rings in the 3D
+stack. Click **Milestones** in the app or edit `data/milestones.yaml`; they stay on your computer, and share mode hides
+their labels.
 
 <p align="center">
 <img src="docs/images/records.png" alt="Records" width="49%"> <img src="docs/images/closeup.png" alt="Close-up of one hike" width="49%">
@@ -67,6 +81,7 @@ Requirements: [uv](https://docs.astral.sh/uv/) (it installs Python 3.12), Node 2
    ```
 4. **Check it.** `reports/06_validation.md` lists ten random workouts with blank columns to fill from the Fitness app,
    monthly step totals to compare with Health, and every record with its date.
+5. **Optional: milestones.** `cp milestones.example.yaml data/milestones.yaml` and edit it, or use the Milestones button.
 
 ### With Claude Code
 

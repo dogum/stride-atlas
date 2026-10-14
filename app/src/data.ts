@@ -163,6 +163,32 @@ export function loadRoutes3D(): Promise<void> {
   })();
 }
 
+// Sleep: one row per night (pipeline/stride/sleep.py) and its timeline as runs of one stage (start minute after
+// 18:00, minutes, stage code). Loaded when the Sleep page first opens. Clock times are hours on an 18-to-42 axis.
+export const STAGES: Record<number, { key: string; label: string }> = { 1: { key: 'inbed', label: 'In bed' }, 2: { key: 'asleep', label: 'Asleep' },
+  3: { key: 'core', label: 'Core' }, 4: { key: 'deep', label: 'Deep' }, 5: { key: 'rem', label: 'REM' }, 6: { key: 'awake', label: 'Awake' } };
+let sleepP: Promise<any> | null = null;
+export function loadSleep(): Promise<any> {
+  return sleepP ||= (async () => {
+    const rows = await pq('sleep_nights.parquet');
+    if (!rows.length) return (G.sleep = null);
+    const buf = await fetch(base + 'sleep_runs.bin').then(r => (r.ok ? r.arrayBuffer() : null)).catch(() => null);
+    const runs = buf && buf.byteLength % 6 === 0 ? new Uint16Array(buf) : new Uint16Array(0);
+    const h = (m: any) => (m == null ? null : m / 60);
+    const nights = rows.map((r: any, i: number) => ({
+      i, ...dayParts(r.date), iso: r.date, source: r.source, cls: r.cls, est: !!r.est, nsrc: r.n_src ?? 1, away: !!r.away,
+      on: fin(r.onset_h), wake: fin(r.wake_h), bed: fin(r.bed_h), up: fin(r.up_h),
+      asleep: h(r.asleep_min), awake: fin(r.awake_min), deep: fin(r.deep_min), rem: fin(r.rem_min), core: fin(r.core_min), unspec: fin(r.unspec_min),
+      eff: fin(r.eff), wakes: fin(r.wakes), latency: fin(r.latency_min), inbed: h(r.inbed_min), naps: r.naps ?? 0, napMin: r.nap_min ?? 0,
+      hr: fin(r.hr_min), hrMed: fin(r.hr_med), hrv: fin(r.hrv), resp: fin(r.resp), spo2: r.spo2 != null ? r.spo2 * 100 : null, spo2Min: r.spo2_min != null ? r.spo2_min * 100 : null,
+      temp: r.temp_c != null ? degF(r.temp_c) : null, tempDev: r.temp_dev_c != null ? r.temp_dev_c * 1.8 : null, bdist: fin(r.bdist),
+      off: r.seg_off ?? 0, n: r.seg_n ?? 0,
+    }));
+    G.sleep = { nights, runs, byD: new Map(nights.map((n: any) => [n.d, n])), apnea: (G.meta?.sleep?.apnea_windows ?? []).map((w: any) => ({ d: dayParts(w.from).d, d2: dayParts(w.to).d })) };
+    return G.sleep;
+  })();
+}
+
 // Street network around home from OpenStreetMap (pipeline/stride/osm.py), with per-edge coverage. Optional:
 // missing files (no OSM step) leave G.streets null and the panel explains why.
 let streetsP: Promise<any> | null = null;

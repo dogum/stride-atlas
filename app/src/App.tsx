@@ -13,6 +13,8 @@ import { drawLift, drawRides, drawSensors, drawSwim, drawSwolf } from './charts/
 import { RINGS, ST, drawStreets } from './charts/streets';
 import { drawDedupe, drawRules } from './charts/health';
 import { PRESENT, Presenter } from './present';
+import { SleepView } from './components/sleep';
+import { loadMilestones } from './milestones';
 import { CREDIT, creditLine } from './credits';
 
 function Loading({ msg, done }: { msg: string; done: boolean }) {
@@ -71,6 +73,7 @@ export function App() {
         emit('filter', 'data');
         requestAnimationFrame(() => performance.mark('stride-first-paint'));
         await loadRest(); computeF(); emit('data');
+        await loadMilestones();
         await loadRoutes(); emit('routes');
         document.documentElement.dataset.loaded = 'all'; // scripts/shoot.mjs waits for this
       } catch (e: any) { console.error(e); setMsg('Could not read app/public/data. Run make all first. ' + (e?.message || '')); }
@@ -87,8 +90,13 @@ export function App() {
     mq.addEventListener('change', onScheme);
     return () => { ro.disconnect(); mq.removeEventListener('change', onScheme); };
   }, [ready]);
-  useWatch(['share']);
+  useWatch(['share', 'view']);
   useEffect(() => { document.body.classList.toggle('share-on', !!S.share); });
+  useEffect(() => {
+    const onHash = () => { const v = location.hash.startsWith('#sleep') ? 'sleep' : 'activity'; if (v !== S.view) { S.view = v; emit('view'); } };
+    addEventListener('hashchange', onHash);
+    return () => removeEventListener('hashchange', onHash);
+  }, []);
 
   if (!ready) return <Loading msg={msg} done={false} />;
   const E = ['effort'];
@@ -96,8 +104,8 @@ export function App() {
     <>
       <div className="tip" id="tip" role="status" aria-live="polite" />
       <Header />
-      {PRESENT && <Presenter />}
-      <main>
+      {PRESENT && S.view !== 'sleep' && <Presenter />}
+      {S.view === 'sleep' ? <SleepView /> : <main>
         <AtlasSection />
         <StackSection />
 
@@ -198,7 +206,7 @@ export function App() {
         </section>
 
         <About />
-      </main>
+      </main>}
       <footer className="foot">{DEMO ? <>Stride Atlas live demo: a synthetic export ({G.meta?.export_date?.slice(0, 10)}) for a person who does not exist, built by the same pipeline. Your own build runs on your computer and nothing leaves it.</> : <>Stride Atlas. Built locally from your Apple Health export ({G.meta?.export_date?.slice(0, 10)}); nothing on this page left your Mac.</>} Missing values are shown as missing, never as zero.
         <span className="credit">{CREDIT.repo ? <a href={CREDIT.repo} target="_blank" rel="noreferrer">{creditLine()}</a> : creditLine()} · open source, MIT</span></footer>
       <Loading msg={msg} done />

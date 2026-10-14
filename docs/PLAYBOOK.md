@@ -166,6 +166,21 @@ Never write a subtitle that assumes a direction ("faster, and easier on the hear
 - **One maximum heart rate does not fit a decade.** Workouts with heart rate from an older watch's files get their own HRmax by the same percentile rule over that era's samples (183 vs 178 bpm in the first build).
 - **Pool length changes SWOLF.** Garmin swims in a 25 m pool and Apple swims in a 25 yd pool are not comparable; break the trend line at a pool change, and at any gap of months.
 
+## 12b. Sleep
+
+- **Sleep comes in eras.** The first build had a Garmin through Connect (2017–18), AutoSleep, two years of the phone's
+  bedtime schedule (time in bed only), the watch's "asleep" (2021–22), then stages, with up to three sources on one
+  night (1,113 of 2,773 nights). One source per night, never a sum, or a night reads twice as long.
+- **Check sleep against itself.** Garmin Connect wrote asleep records in local time labelled as UTC (a 5-hour shift in
+  winter, 3-minute "nights" around midnight) and, later, whole sleep windows with no time awake (8+ hours a night).
+  Compare a source's asleep records with its own in-bed records before trusting either.
+- **Read the extremes**: a 22-hour "nap" was a misplaced record (naps are capped at 4 hours), and the longest night was
+  a Garmin window until estimates were excluded from records.
+- **Medical signals need care in copy.** Sleep apnea notifications are 30-day screening windows; say what they are and
+  that a doctor confirms, never more.
+- **Browser details**: hyparquet returns 64-bit integers as BigInt (cast counts to INTEGER when exporting), and a
+  `position: fixed` dialog inside a sticky header with `backdrop-filter` is trapped in the header (use a portal).
+
 ## 13. Presentation and recording
 
 - **A compact home area and share mode can empty the 3D view.** In the first build the median home walk stayed within

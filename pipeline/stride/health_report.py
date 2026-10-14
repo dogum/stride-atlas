@@ -32,6 +32,11 @@ RULES = {
     "S1": ("Phone and watch step overlap merged", "days", "Per minute: the watch if any watch sample covers it, else the phone, else other sources."),
     "H1": ("Implausible heart-rate samples dropped", "samples", "Under 35 or over 220 bpm, or isolated 40 bpm jumps within 5 s that return within 10 s."),
     "P1": ("Swim wall touches dropped", "laps", "Laps under 5 s."),
+    "Z2": ("One sleep source per night", "nights", "Several sources recorded the same night: keep stages, then any asleep time, then time in bed only; the watch first; never a sum."),
+    "Z4": ("Sleep written in local time as UTC, moved", "nights", "Asleep records exactly the time-zone offset away from the same app's in-bed record (Garmin Connect, 2017-18)."),
+    "Z5": ("Sleep windows marked as estimates", "nights", "A source whose typical night has under 10 minutes awake is timing a sleep window, not measuring sleep: kept out of averages and records."),
+    "Z1": ("Naps separated from the night", "nights", "Asleep stretches more than 90 minutes apart are separate sessions; daytime ones are naps."),
+    "Z3": ("Implausible nights dropped", "nights", "One source's records spanning more than 20 hours in a night."),
     "TZ": ("Time zones resolved", "workouts", "HKTimeZone kept; fixed-offset Peloton zones mapped to the named zone; disagreements with the route location logged."),
 }
 
@@ -137,6 +142,8 @@ def run() -> None:
         "E2": int(log[log.rule_id == "E2"].row_key.nunique()), "S1": int(log[log.rule_id == "S1"].row_key.str.startswith("steps:").sum()),
         "W1": int(((log.rule_id == "W1") & (log.field == "dropped")).sum()), "W2": int((log.rule_id == "W2").sum()), "W3": int((log.rule_id == "W3").sum()),
         "W4": int((log.rule_id == "W4").sum()), "W5": int((log.rule_id == "W5").sum()), "H1": int((log.rule_id == "H1").sum()), "P1": int((log.rule_id == "P1").sum()), "TZ": int(log[log.rule_id == "TZ"].row_key.nunique()),
+        **{k: int((log.rule_id == k).sum()) for k in ("Z1", "Z2", "Z3", "Z4")},
+        "Z5": int(pd.to_numeric(log[log.rule_id == "Z5"].after, errors="coerce").fillna(0).sum()),
     }
     body = []
     wc = con.execute("SELECT count(*) FILTER (WHERE setting='outdoor') o, count(*) n FROM workouts_clean").fetchone()

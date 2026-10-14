@@ -4,6 +4,7 @@ import * as d3_ from 'd3';
 const d3: any = d3_;
 import { F, G, GPS_TYPES, S } from '../store';
 import { MONTHS, Out, TIP, TYPE, TYPES, armArrival, css, dayDate, emptyState, f1, fDate, fDateShort, fInt, fK, fPct, frame, monthTicks, typeColor, xAxis, yGrid } from '../core';
+import { drawMilestones } from '../milestones';
 
 export function drawRace(el: HTMLElement): Out {
   const ys = F.years; const ws = F.gps;
@@ -105,6 +106,7 @@ export function drawWeekly(el: HTMLElement): Out {
   yGrid(f.g, yS, f.iw, 4, (v: number) => v + ' mi');
   const yrTicks = F.years.map((y: number) => { const d = Math.round((Date.UTC(y, 0, 1) - G.D0) / G.DAY); return wk(Math.max(d, d0)) - w0; });
   xAxis(f.g, x, f.ih, { values: yrTicks, fmt: (v: number) => F.years[yrTicks.indexOf(v)] });
+  drawMilestones(f.g, d3.scaleLinear([w0 * 7, (w0 + weeks.length) * 7], [0, f.iw]), f.ih, { labels: true });
   const bw = Math.max(1, f.iw / weeks.length - (f.iw / weeks.length > 4 ? 1.5 : 0.5));
   f.g.append('g').attr('class', 'a-reveal').selectAll('rect').data(weeks).join('rect').attr('x', (w: any) => x(w.i)).attr('width', bw).attr('y', (w: any) => yS(w.v)).attr('height', (w: any) => f.ih - yS(w.v)).style('fill', 'var(--s1)').style('opacity', .38);
   f.g.append('path').datum(roll).attr('class', 'a-line').attr('d', d3.line().x((v, i) => x(i) + bw / 2).y(v => yS(v)).curve(d3.curveMonotoneX)).style('fill', 'none').style('stroke', 'var(--ink-1)').style('stroke-width', 2);

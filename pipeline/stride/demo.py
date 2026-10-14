@@ -803,9 +803,6 @@ class Demo:
                     s_ = rng.random() < 0.82
                     stood += s_
                     W.rec("AppleStandHour", src, wa, None, at, at + timedelta(hours=1), "HKCategoryValueAppleStandHourStood" if s_ else "HKCategoryValueAppleStandHourIdle", cat=True)
-                if d >= date(2020, 12, 1):
-                    bed = datetime(d.year, d.month, d.day, 23, int(rng.integers(0, 50)), tzinfo=tz) - timedelta(days=1)
-                    W.rec("SleepAnalysis", src, wa, None, bed, bed + timedelta(hours=float(rng.normal(7.1, 0.7))), "HKCategoryValueSleepAnalysisAsleepCore", cat=True)
                 if d >= date(2021, 9, 21):
                     W.rec("RespiratoryRate", src, wa, "count/min", at, at + timedelta(minutes=10), round(float(rng.normal(14.2, 0.8)), 1))
                 if d >= ULTRA_FROM:
@@ -816,6 +813,125 @@ class Demo:
                 W.summaries.append(f' <ActivitySummary dateComponents="{d.isoformat()}" activeEnergyBurned="{kcal:.4f}" activeEnergyBurnedGoal="520" activeEnergyBurnedUnit="Cal" '
                                    f'appleMoveTime="0" appleMoveTimeGoal="0" appleExerciseTime="{ex:.0f}" appleExerciseTimeGoal="30" appleStandHours="{stood}" appleStandHoursGoal="12"/>')
             d += timedelta(days=1)
+
+    # ---- sleep: every era an export can hold, one night at a time
+    MILESTONES = [
+        {"date": "2020-03-16", "end": "2022-08-29", "label": "Working from home", "kind": "work"},
+        {"date": "2021-08-14", "label": "Our daughter was born", "kind": "family", "public": True},
+        {"date": "2023-02-10", "end": "2023-03-05", "label": "Sprained ankle", "kind": "health"},
+        {"date": "2024-01-08", "label": "New job, longer commute", "kind": "work"},
+        {"date": "2025-08-09", "end": "2025-08-16", "label": "Family trip to Asheville", "kind": "travel"},
+    ]
+
+    def sleep(self):
+        """Nights from 2018 to the export, by era: a Garmin's sleep windows through Connect (asleep exactly as long as in
+        bed, and for six weeks written in local time as UTC), the phone's bedtime schedule (in bed only), the watch's
+        "asleep" from watchOS 7, stages from watchOS 9, two watches overlapping after the upgrade, naps, trips in another
+        time zone, and the vitals the watch records asleep. The milestones shape it: a baby's first months fragment sleep,
+        working from home wakes later, a longer commute wakes earlier."""
+        W = self.W
+        d, last = APPLE_FIRST, EXPORT_AT.date() - timedelta(days=1)
+        garmin_to, clock_to, unspec_from, stages_from = date(2019, 3, 15), date(2020, 9, 16), date(2020, 12, 1), date(2022, 10, 15)
+        baby, wfh, commute = date(2021, 8, 14), (date(2020, 3, 16), date(2022, 8, 29)), date(2024, 1, 8)
+        connect = ("Connect", "18")
+        while d <= last:
+            rng = self._rng("night", d.isoformat())
+            away = any(a <= d <= b for a, b in self.trips)
+            tz = TRIP_TZ if away else TZ
+            dow = d.weekday()
+            yrs = (d - APPLE_FIRST).days / 365.25
+            weekend = dow in (4, 5)                       # Friday and Saturday nights
+            newborn = baby <= d < baby + timedelta(days=150)
+            onset = 22.65 + 0.55 * weekend + rng.normal(0, 0.42) + (1.3 if rng.random() < 0.05 else 0) - (0.6 if newborn else 0)
+            wake = (30.35 - 0.09 * yrs + 0.7 * weekend + rng.normal(0, 0.33) + (0.55 if wfh[0] <= d <= wfh[1] and not weekend else 0)
+                    - (0.4 if d >= commute and not weekend else 0) - (0.5 if newborn else 0))
+            wake = max(onset + 3.2, wake)
+            at = lambda h: datetime(d.year, d.month, d.day, tzinfo=tz) + timedelta(hours=float(h))
+            wa = watch_on(d)
+            phone = phone_on(d)
+            worn = wa is not None and d >= unspec_from and rng.random() > 0.07      # the watch charges some nights
+            # the phone's bedtime schedule: time in bed only (Clock, then the Sleep app on the iPhone)
+            if d > garmin_to and (d <= clock_to or not worn or rng.random() < 0.6):
+                ib0, ib1 = onset - rng.uniform(0.15, 0.5), wake + rng.uniform(0.05, 0.4)
+                W.rec("SleepAnalysis", "Clock" if d <= clock_to else "iPhone", phone, None, at(ib0), at(ib1), "HKCategoryValueSleepAnalysisInBed", cat=True)
+            if d <= garmin_to:
+                # a Garmin's sleep window: asleep exactly as long as in bed, no time awake (rule Z5 marks them estimates)
+                if rng.random() < 0.8:
+                    a0, a1 = at(onset - rng.uniform(0.2, 0.6)), at(wake + rng.uniform(0.0, 0.3))
+                    W.rec("SleepAnalysis", connect[0], None, None, a0, a1, "HKCategoryValueSleepAnalysisInBed", cat=True)
+                    if date(2018, 1, 1) <= d < date(2018, 2, 15):   # rule Z4: asleep written in local time as UTC
+                        off = a0.utcoffset()
+                        a0, a1 = a0 + off, a1 + off
+                    W.rec("SleepAnalysis", connect[0], None, None, a0, a1, "HKCategoryValueSleepAnalysisAsleepUnspecified", cat=True)
+            elif worn:
+                src = WATCH_SRC[wa[0]]
+                segs = self._night(rng, onset, wake, staged=d >= stages_from, newborn=newborn)
+                for h0, h1, code in segs:
+                    W.rec("SleepAnalysis", src, wa, None, at(h0), at(h1), f"HKCategoryValueSleepAnalysis{code}", cat=True)
+                if d >= stages_from:
+                    W.rec("SleepAnalysis", src, wa, None, at(onset - 0.1), at(wake + 0.05), "HKCategoryValueSleepAnalysisInBed", cat=True)
+                # the upgrade: the old watch, still on the charger by the bed some nights, recorded too for two weeks
+                if ULTRA_FROM <= d < ULTRA_FROM + timedelta(days=14) and rng.random() < 0.6:
+                    old = ("Watch4,2", "10.0")
+                    for h0, h1, code in self._night(rng, onset + rng.uniform(-0.1, 0.1), wake, staged=True, newborn=False):
+                        W.rec("SleepAnalysis", WATCH_SRC["Watch4,2"], old, None, at(h0), at(h1), f"HKCategoryValueSleepAnalysis{code}", cat=True)
+                # what the watch measures while you sleep
+                rest = 58 - 5 * fitness(d) + (3 if newborn else 0)
+                for h in np.arange(onset + 0.2, wake - 0.1, 0.18):
+                    dip = 4 * math.sin(math.pi * (h - onset) / max(1, wake - onset))
+                    W.rec("HeartRate", src, wa, "count/min", at(h), at(h), round(rest - dip + rng.normal(0, 2.2)))
+                W.rec("HeartRateVariabilitySDNN", src, wa, "ms", at(onset + 1.5), at(onset + 1.52), round(float(np.exp(rng.normal(math.log(44 + 14 * fitness(d)), 0.22))), 2))
+                if d >= date(2021, 9, 21):
+                    for h in np.arange(onset + 0.5, wake, 0.75):
+                        W.rec("RespiratoryRate", src, wa, "count/min", at(h), at(h + 0.02), round(float(rng.normal(14.6, 0.7)), 1))
+                if d >= ULTRA_FROM:
+                    for h in np.sort(rng.uniform(onset + 0.5, wake - 0.3, 4)):
+                        W.rec("OxygenSaturation", src, wa, "%", at(h), at(h), round(float(np.clip(rng.normal(0.962, 0.011), 0.9, 1)), 2))
+                if d >= date(2024, 9, 16):
+                    W.rec("AppleSleepingBreathingDisturbances", src, wa, "count", at(onset), at(wake), round(float(abs(rng.normal(5.8, 1.9))), 2))
+                # a weekend nap
+                if dow in (5, 6) and rng.random() < 0.12:
+                    n0 = at(rng.uniform(37.5, 39.5))       # 1:30 to 3:30 pm the next day
+                    W.rec("SleepAnalysis", src, wa, None, n0, n0 + timedelta(minutes=float(rng.uniform(18, 55))), "HKCategoryValueSleepAnalysisAsleepCore" if d >= stages_from else "HKCategoryValueSleepAnalysisAsleepUnspecified", cat=True)
+            d += timedelta(days=1)
+
+    @staticmethod
+    def _night(rng, onset: float, wake: float, staged: bool, newborn: bool) -> list[tuple[float, float, str]]:
+        """One night as segments (hours on the 18-to-42 axis): cycles of about 90 minutes, deep early and REM late,
+        brief awakenings between cycles (long ones with a newborn). Before stages, the watch writes asleep stretches
+        with the awake gaps left empty."""
+        out, t = [], onset
+        cyc = 0
+        while t < wake - 0.15:
+            L = rng.uniform(1.35, 1.75)
+            deep = max(0.03, rng.normal(0.55 - 0.16 * cyc, 0.08)) if cyc < 4 else (0.04 if rng.random() < 0.2 else 0)
+            rem = max(0.05, rng.normal(0.13 + 0.07 * cyc, 0.05))
+            core = max(0.2, L - deep - rem)
+            parts = [("AsleepCore", core * 0.45), ("AsleepDeep", deep), ("AsleepCore", core * 0.55), ("AsleepREM", rem)]
+            for code, dur in parts:
+                if dur <= 0.01 or t >= wake:
+                    continue
+                e = min(wake, t + dur)
+                out.append((t, e, code if staged else "AsleepUnspecified"))
+                t = e
+            cyc += 1
+            if t < wake - 0.2 and rng.random() < (0.85 if newborn else 0.45):
+                gap = rng.uniform(0.35, 0.8) if newborn else rng.uniform(0.04, 0.16)
+                if staged:
+                    out.append((t, min(wake, t + gap), "Awake"))
+                t = min(wake, t + gap)
+        if staged and rng.random() < 0.5:
+            out.append((wake, wake + rng.uniform(0.03, 0.12), "Awake"))
+        # an unstaged watch merges neighbouring stretches into a few records
+        if not staged:
+            merged: list[list] = []
+            for a, b, c in out:
+                if merged and abs(merged[-1][1] - a) < 1e-9:
+                    merged[-1][1] = b
+                else:
+                    merged.append([a, b, c])
+            out = [tuple(m) for m in merged]
+        return out
 
     # ---- the schedule of workouts
     def schedule(self):
@@ -970,6 +1086,10 @@ class Demo:
         sfiles.update(self.strava_files)
         zwrite(self.out / "export_strava_demo.zip", sfiles)
         (self.out / "town.osm").write_bytes(self.town_osm())
+        import yaml
+
+        (self.out / "milestones.yaml").write_text("# Alex's life milestones (the demo person does not exist). See milestones.example.yaml.\n"
+                                                  + yaml.safe_dump(self.MILESTONES, sort_keys=False, allow_unicode=True))
 
 
 def digest(out: Path) -> dict:
@@ -989,9 +1109,11 @@ def digest(out: Path) -> dict:
             for n in z.namelist():
                 b = z.read(n)
                 files[n] = gzip.decompress(b) if n.endswith(".gz") else b
-    files["town.osm"] = (out / "town.osm").read_bytes()
-    part = lambda n: "export.xml" if n.endswith("export.xml") else "routes" if "/workout-routes/" in n else "town.osm" if n == "town.osm" else "strava"
-    parts = {k: h((n, files[n]) for n in sorted(files) if part(n) == k) for k in ("export.xml", "routes", "strava", "town.osm")}
+    for extra in ("town.osm", "milestones.yaml"):
+        if (out / extra).exists():
+            files[extra] = (out / extra).read_bytes()
+    part = lambda n: "export.xml" if n.endswith("export.xml") else "routes" if "/workout-routes/" in n else "extras" if n in ("town.osm", "milestones.yaml") else "strava"
+    parts = {k: h((n, files[n]) for n in sorted(files) if part(n) == k) for k in ("export.xml", "routes", "strava", "extras")}
     parts["all"] = h((k, v.encode()) for k, v in sorted(parts.items()))
     return {"parts": parts, "files": {n: hashlib.sha256(files[n]).hexdigest()[:12] for n in sorted(files)}}
 
@@ -1010,6 +1132,7 @@ def main() -> None:
     demo = Demo(out, a.seed)
     demo.schedule()
     demo.days()
+    demo.sleep()
     demo.write()
     print(f"demo: {demo.n_workouts:,} Health workouts, {len(demo.gpx):,} routes, {len(demo.W.records):,} records, {len(demo.strava)} Strava activities -> {out}/")
     dg = digest(out)

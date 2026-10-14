@@ -1,7 +1,7 @@
 # Stride Atlas: instructions for Claude Code
 
 Stride Atlas turns one person's Apple Health export (and, optionally, a Strava archive) into a local dashboard of every
-walk, run, hike and ride: a glowing route atlas, the same routes stacked in 3D by date, time of day or elevation, rhythm and volume charts, pace and effort, terrain and weather,
+walk, run, hike and ride, plus a separate Sleep page for every night: a glowing route atlas, the same routes stacked in 3D by date, time of day or elevation, rhythm and volume charts, pace and effort, terrain and weather,
 records, loops, fitness, swims and strength, a data-health chapter and a device timeline. The pipeline and the app are
 built. Your job is usually to run them on someone's data, adapt to what their export does differently, and explain
 what you found.
@@ -45,12 +45,15 @@ Read this file, then `docs/PLAYBOOK.md` (lessons from the first build), then ski
      Account** → *Download Request* → *Request your archive*. Strava emails a link; put the zip in `data/` too. Only its
      activities are read.
 3. **Settings.** `cp config.example.yaml config.yaml`. Ask the user only about `units` (imperial or metric). Leave the
-   rest at its defaults unless the data says otherwise.
+   rest at its defaults unless the data says otherwise. Offer **life milestones** (optional): the dates that explain
+   their data, such as a child born, working from home, a move, a new commute or an injury. Write what they give you
+   to `data/milestones.yaml` (format in `milestones.example.yaml`; a month is fine when they are unsure of the day), or
+   point them to the Milestones button in the app. Never put them anywhere but `data/`.
 4. **Phase 0, inventory.** `make unzip inventory`, then read `reports/00_inventory.html`, especially the
    *Differences* list. Compare with `docs/HEALTH_EXPORT.md` and the quirk table in `docs/PLAYBOOK.md` §3. Record every
    difference in `data/DECISIONS.md`. Stop and ask only if a difference breaks the data model (for example, no
    `workout-routes/` folder at all).
-5. **Phases 1–2, parse and clean.** `make parse strava clean`. Read `reports/02_data_health.html`. The checks: counts
+5. **Phases 1–2, parse and clean.** `make parse strava clean` (sleep is assembled later by `make sleep`, rules Z1–Z5). Read `reports/02_data_health.html`. The checks: counts
    reconcile with the inventory; no moving walk segment faster than 12 mph; the step totals look like the Health app's.
 6. **Phase 3, enrich.** `make enrich`. This calls Open-Meteo, NOAA, USGS 3DEP and downloads one Geofabrik regional
    extract (50–500 MB). Tell the user about the download before it starts. A re-run must make zero network calls.
@@ -72,10 +75,11 @@ silent copy and one with an original generated soundtrack).
 ## Where things are
 
 ```
-pipeline/stride/   inventory, parse, strava, clean (+ track), enrich (+ weather, osm), derive (+ metrics), export,
-                   validate, verify, demo (synthetic data), health_report, soundtrack (video music)
-app/src/           React shell; charts/ are imperative D3; map/atlas.ts and map/stack.ts (3D) are deck.gl; present.tsx is
-                   the video tour; credits.ts is the credit line
+pipeline/stride/   inventory, parse, strava, clean (+ track), enrich (+ weather, osm), derive (+ metrics), sleep,
+                   export, milestones, validate, verify, demo (synthetic data), health_report, soundtrack (video music)
+app/src/           React shell; charts/ are imperative D3 (charts/sleep.ts and components/sleep.tsx are the Sleep page);
+                   map/atlas.ts and map/stack.ts (3D) are deck.gl; milestones.ts draws life milestones on every date
+                   axis; present.tsx is the video tour; credits.ts is the credit line
 scripts/           shoot.mjs (screenshots), record.mjs (video), lib/cdp.mjs (headless Chrome)
 docs/              the specs, the playbook, the decisions log
 demo/config.yaml   settings for `make demo`

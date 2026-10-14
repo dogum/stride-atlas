@@ -4,6 +4,7 @@ import * as d3_ from 'd3';
 const d3: any = d3_;
 import { F, G, S } from '../store';
 import { MONTHS, Out, TIP, armArrival, css, dayDate, dayOfISO, emptyState, f1, fDate, fDateISO, fDur, fInt, fK, fPace, fPct, frame, ordinalRamp, rollingMedian, xAxis, yGrid } from '../core';
+import { drawMilestones } from '../milestones';
 
 export function drawSwim(el: HTMLElement): Out {
   const ws = F.all.filter((w: any) => w.type === 'swim');
@@ -136,6 +137,7 @@ export function drawSensors(el: HTMLElement): Out {
       g.on('pointermove', (e: any) => TIP.show(e, dv.name, [['Hardware', dv.hardware], ['First sample', fDateISO(dv.from)], ['Last sample', fDateISO(dv.to)], ['Samples', fInt(dv.n)]])).on('pointerleave', TIP.hide);
     });
   };
+  drawMilestones(svg.append('g'), d3.scaleLinear([(t0 - G.D0) / G.DAY, (t1 - G.D0) / G.DAY], [L, w - 16]), h - 22, { y0: 4 });
   band(watches, 8, 'Watch on your wrist', 'watch');
   band(phones, 42, 'Phone in your pocket', 'phone');
   const clsColor: Record<string, string> = { watch: 'var(--s1)', phone: 'var(--s3)', other: 'var(--s4)' };

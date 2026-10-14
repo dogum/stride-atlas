@@ -9,6 +9,7 @@ const d3: any = d3_;
 import { F, G, GPS_TYPES, REG, S } from '../store';
 import { MAP_RAMPS, MONTHS, dayDate, f1, fInt } from '../core';
 import { loadContours, loadStreets } from '../data';
+import { KINDS, msLabel, recentMilestone } from '../milestones';
 
 const BG: [number, number, number, number] = [7, 12, 22, 255];
 const ADD = { depthWriteEnabled: false, depthCompare: 'always', blend: true, blendColorOperation: 'add', blendColorSrcFactor: 'src-alpha', blendColorDstFactor: 'one', blendAlphaOperation: 'add', blendAlphaSrcFactor: 'one', blendAlphaDstFactor: 'one-minus-src-alpha' } as any;
@@ -201,7 +202,10 @@ export class Atlas {
       this.render();
       const i = d3.bisector((w: any) => w.d).right(list, cur);
       const dt = dayDate(Math.max(0, Math.floor(cur)));
-      this.hooks.onPlay({ on: true, date: `${MONTHS[dt.getUTCMonth()]} ${dt.getUTCFullYear()}`, sub: `${fInt(i)} routes · ${fInt(i ? cum[i - 1] : 0)} mi` });
+      // a milestone the replay has just passed stays under the date for a moment
+      const ms = recentMilestone(cur, Math.max(20, (d1 - d0) / 12));
+      this.hooks.onPlay({ on: true, date: `${MONTHS[dt.getUTCMonth()]} ${dt.getUTCFullYear()}`, sub: `${fInt(i)} routes · ${fInt(i ? cum[i - 1] : 0)} mi`,
+        note: ms && !(S.share && !ms.public) ? msLabel(ms) : null, noteC: ms ? KINDS[ms.kind].c : null });
       if (k < 1) this.playing.raf = requestAnimationFrame(step);
       else { this.playing = null; this.trailMin = -1; setTimeout(() => { this.filterMax = 1e9; this.render(); this.hooks.onPlay({ on: false }); }, 1200); }
     };

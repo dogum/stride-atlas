@@ -1,0 +1,19 @@
+# Life milestones for Stride Atlas: drawn faintly on every chart with a time axis.
+# Copy to data/milestones.yaml (or add them in the app: Milestones, top right, while `make dev` runs).
+# date: 2021-08-14, or 2021-08 for a month. end: for a period. kind: family, work, home, health, travel or other.
+# public: true keeps the label in share mode (otherwise screenshots show only an unlabelled mark).
+
+- date: 2019-06-01
+  label: Moved to a new neighbourhood
+  kind: home
+- date: 2020-03-16
+  end: 2022-09-06
+  label: Working from home
+  kind: work
+- date: 2021-08-14
+  label: Our daughter was born
+  kind: family
+- date: 2023-02
+  end: 2023-03-20
+  label: Sprained ankle
+  kind: health
