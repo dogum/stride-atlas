@@ -153,7 +153,7 @@ Weather: [Open-Meteo](https://open-meteo.com) historical archive (CC BY 4.0), [N
 
 Bug reports, export quirks, new data sources and new charts are all welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md)
 first: the one hard rule is that nothing from a real export ever goes into an issue or a pull request (`make demo`
-reproduces almost anything).
+reproduces almost anything). What changed in each release is in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
