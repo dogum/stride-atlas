@@ -377,7 +377,9 @@ body { margin: 0; }
 .ms-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .ms-top h3 { margin: 4px 0 0; font-family: var(--font-display); font-size: 22px; }
 .ms-note, .ms-where { color: var(--ink-3); font-size: 13.5px; line-height: 1.5; margin: 10px 0; }
-.ms-show { display: flex; gap: 8px; align-items: center; font-size: 13.5px; margin: 6px 0 12px; }
+.ms-show { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 13.5px; margin: 6px 0 12px; }
+.ms-show label { display: flex; gap: 8px; align-items: center; }
+.ms-kinds { display: flex; flex-wrap: wrap; gap: 6px; }
 .ms-rows { display: flex; flex-direction: column; gap: 6px; }
 .ms-row { display: grid; grid-template-columns: 118px 118px minmax(0, 1fr) 110px 52px 70px; gap: 8px; align-items: center; }
 .ms-row.ms-head { font: 500 11px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-4); }

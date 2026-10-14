@@ -59,7 +59,16 @@ export const msWhen = (m: Milestone) => {
   const f = (d: number) => { const t = dayDate(d); return m.precision === 'month' ? `${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}` : `${MONTHS[t.getUTCMonth()]} ${t.getUTCDate()}, ${t.getUTCFullYear()}`; };
   return m.d2 != null ? `${f(m.d)} to ${f(m.d2)}` : f(m.d);
 };
-export const showMs = () => S.showMilestones !== false && MS.list.length > 0;
+// kinds the viewer has switched off (a per-browser convenience, so it lives in localStorage)
+const HID = 'stride-ms-hidden';
+export const hiddenKinds: Set<string> = (() => { try { return new Set(JSON.parse(localStorage.getItem(HID) || '[]')); } catch { return new Set(); } })();
+export function toggleKind(k: string) {
+  if (hiddenKinds.has(k)) hiddenKinds.delete(k); else hiddenKinds.add(k);
+  try { localStorage.setItem(HID, JSON.stringify([...hiddenKinds])); } catch { /* private mode */ }
+  emit('milestones', 'filter');
+}
+export const visibleMs = () => MS.list.filter(m => !hiddenKinds.has(m.kind));
+export const showMs = () => S.showMilestones !== false && visibleMs().length > 0;
 
 // Faint lines (a day) and bands (a period) behind a chart whose x maps day numbers, with a small marker in the top
 // margin to hover. `labels` writes the label beside the marker where there is room.
@@ -68,7 +77,7 @@ export function drawMilestones(g: any, x: any, ih: number, opts: { labels?: bool
   const [r0, r1] = x.range(), clampX = (v: number) => Math.max(r0, Math.min(r1, v));
   const back = g.insert('g', ':first-child').attr('class', 'ms-back').attr('pointer-events', 'none');
   const front = g.append('g').attr('class', 'ms-front');
-  const shown = MS.list.filter(m => { const a = x(m.d), b = m.d2 != null ? x(m.d2) : a; return b >= r0 - 1 && a <= r1 + 1; });
+  const shown = visibleMs().filter(m => { const a = x(m.d), b = m.d2 != null ? x(m.d2) : a; return b >= r0 - 1 && a <= r1 + 1; });
   const xs = shown.map(m => clampX(x(m.d)));
   shown.forEach((m, i) => {
     const a = x(m.d), b = m.d2 != null ? x(m.d2) : null;
@@ -94,7 +103,7 @@ export function drawMilestones(g: any, x: any, ih: number, opts: { labels?: bool
 export function recentMilestone(cur: number, window: number): Milestone | null {
   if (!showMs()) return null;
   let best: Milestone | null = null;
-  for (const m of MS.list) if (m.d <= cur && cur - m.d <= window) best = m;
+  for (const m of visibleMs()) if (m.d <= cur && cur - m.d <= window) best = m;
   return best;
 }
 

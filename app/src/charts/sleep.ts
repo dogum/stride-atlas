@@ -7,7 +7,7 @@ const d3: any = d3_;
 import { G, S, emit } from '../store';
 import { MONTHS, Out, TIP, armArrival, css, dayDate, emptyState, f1, fClock, fDate, fDur, fInt, frame, xAxis, yGrid } from '../core';
 import { STAGES } from '../data';
-import { KINDS, drawMilestones, msLabel, showMs, MS } from '../milestones';
+import { KINDS, drawMilestones, showMs, visibleMs } from '../milestones';
 
 // the stage colours on the night ground (the barcode and the one-night view are dark in both themes)
 export const NIGHT_C: Record<number, string> = { 1: 'rgba(151,165,187,.30)', 2: '#4f78b8', 3: '#3987e5', 4: '#5a4fcf', 5: '#8ec5ff', 6: '#ff8f4a' };
@@ -90,7 +90,7 @@ export function drawBarcode(el: HTMLElement): Out {
     }
   }
   // milestones: a faint band for a period, a line for a day, in every year row they touch
-  if (showMs()) for (const m of MS.list) {
+  if (showMs()) for (const m of visibleMs()) {
     const c = KINDS[m.kind].c;
     for (const y of years) {
       const y0 = Math.round((Date.UTC(y, 0, 1) - G.D0) / G.DAY), y1 = y0 + 365;

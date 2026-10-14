@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { S, emit, useWatch } from '../store';
-import { KINDS, MS, msFile, saveMilestones } from '../milestones';
+import { KINDS, MS, hiddenKinds, msFile, saveMilestones, toggleKind } from '../milestones';
 
 type Row = { date: string; end: string; label: string; kind: string; public: boolean };
 const blank = (): Row => ({ date: '', end: '', label: '', kind: 'family', public: false });
@@ -23,19 +23,28 @@ export function MilestonesButton() {
   );
 }
 
+const fromList = (): Row[] => MS.list.map(m => ({ date: m.precision === 'month' ? m.date.slice(0, 7) : m.date, end: m.end ?? '', label: m.label, kind: m.kind, public: m.public }));
 function Editor({ close }: { close: () => void }) {
-  const [rows, setRows] = useState<Row[]>(() => MS.list.map(m => ({ date: m.precision === 'month' ? m.date.slice(0, 7) : m.date, end: m.end ?? '', label: m.label, kind: m.kind, public: m.public })));
+  const v = useWatch(['milestones']);
+  const [rows, setRowsRaw] = useState<Row[]>(fromList);
+  // until the first edit, follow the loaded list (it may still be loading when the panel opens)
+  const [dirty, setDirty] = useState(false);
+  useEffect(() => { if (!dirty) setRowsRaw(fromList()); }, [v]);
+  const setRows = (f: (rs: Row[]) => Row[]) => { setDirty(true); setRowsRaw(f); };
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  const [, setTick] = useState(0);
   useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); }; addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, [close]);
   const upd = (i: number, p: Partial<Row>) => setRows(rs => rs.map((r, j) => (j === i ? { ...r, ...p } : r)));
   const bad = rows.filter(r => r.label.trim() && (!okDate(r.date) || (r.end && !okDate(r.end)))).length;
   const save = async () => {
+    const keepN = rows.filter(r => r.label.trim() && okDate(r.date)).length;
+    if (!keepN && MS.list.length && !confirm(`Remove all ${MS.list.length} milestones?`)) return;
     setBusy(true); setMsg('');
     try {
       const keep = rows.filter(r => r.label.trim() && okDate(r.date));
       const out = await saveMilestones(keep.map(r => ({ date: r.date.trim(), end: r.end.trim() || undefined, label: r.label.trim(), kind: r.kind, public: r.public, precision: r.date.trim().length === 7 ? 'month' : 'day' })));
-      setMsg(out);
+      setMsg(out); setDirty(false);
     } catch (e: any) { setMsg('Could not save: ' + (e?.message || e)); }
     setBusy(false);
   };
@@ -48,7 +57,12 @@ function Editor({ close }: { close: () => void }) {
         </div>
         <p className="ms-note">A child born, working from home, a new commute, a move, an injury. Each shows as a faint line (or a band for a period) on every chart with a time axis, on both pages.
           Use a month (<code className="mono">2021-08</code>) when you are not sure of the day. In share mode the labels are hidden unless you tick <b>Public</b>.</p>
-        <label className="ms-show"><input type="checkbox" checked={S.showMilestones !== false} onChange={e => { S.showMilestones = e.target.checked; emit('milestones', 'filter'); }} /> Show milestones on the charts</label>
+        <div className="ms-show">
+          <label><input type="checkbox" checked={S.showMilestones !== false} onChange={e => { S.showMilestones = e.target.checked; emit('milestones', 'filter'); }} /> Show milestones on the charts</label>
+          <span className="ms-kinds" role="group" aria-label="Kinds to show">{Object.entries(KINDS).filter(([k]) => MS.list.some(m => m.kind === k)).map(([k, v]) => (
+            <button key={k} type="button" className="chip" aria-pressed={!hiddenKinds.has(k)} onClick={() => { toggleKind(k); setTick(t => t + 1); }}>
+              <span className="dot" style={{ ['--c' as any]: v.c }} />{v.label} <span className="mono" style={{ color: 'var(--ink-4)', fontSize: 11 }}>{MS.list.filter(m => m.kind === k).length}</span></button>))}</span>
+        </div>
         <div className="ms-rows">
           <div className="ms-row ms-head"><span>Date</span><span>Until (optional)</span><span>What happened</span><span>Kind</span><span>Public</span><span /></div>
           {rows.map((r, i) => (

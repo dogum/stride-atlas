@@ -11,7 +11,7 @@ const d3: any = d3_;
 import { F, G, GPS_TYPES, REG, S } from '../store';
 import { MAP_RAMPS, ft, fInt } from '../core';
 import { loadContours } from '../data';
-import { KINDS, MS, msLabel, showMs } from '../milestones';
+import { KINDS, MS, msLabel, showMs, visibleMs } from '../milestones';
 
 export const STACK_MODES = [{ key: 'date', label: 'Date' }, { key: 'hour', label: 'Time of day' }, { key: 'ele', label: 'Elevation' }];
 export type StackMode = 'date' | 'hour' | 'ele';
@@ -80,7 +80,7 @@ export class Stack {
 
   async build(): Promise<boolean> {
     const place = stackPlace();
-    const key = `${place}|${S.share}|${G.routeEle ? 1 : 0}|${showMs() ? MS.list.map(m => `${m.d}:${m.d2 ?? ''}:${m.kind}:${msLabel(m)}`).join(',') : ''}`;
+    const key = `${place}|${S.share}|${G.routeEle ? 1 : 0}|${showMs() ? visibleMs().map(m => `${m.d}:${m.d2 ?? ''}:${m.kind}:${msLabel(m)}`).join(',') : ''}`;
     if (key === this.key) return !!this.pieces.length;
     this.key = key;
     const xy = G.routeXY, gap = G.routeGap, sh = G.routeShare, ele = G.routeEle, tim = G.routeTime;
@@ -161,7 +161,7 @@ export class Stack {
       G2.push({ z: { ...zero, date: (d - d0) / (d1 - d0) * H }, label: String(y), mode: 'date' });
     }
     // life milestones as coloured rings at their date's height, labelled on the far corner
-    if (showMs()) for (const m of MS.list) {
+    if (showMs()) for (const m of visibleMs()) {
       for (const [d, lab] of [[m.d, S.share && !m.public ? '' : msLabel(m)], ...(m.d2 != null ? [[m.d2, '']] : [])] as [number, string][]) {
         if (d < d0 || d >= d1) continue;
         const c = d3.color(KINDS[m.kind].c)!.rgb();

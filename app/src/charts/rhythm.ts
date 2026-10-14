@@ -6,7 +6,7 @@ import { F, G, S } from '../store';
 import {
   DOWS, MONTHS, Out, TIP, armArrival, css, dayDate, emptyState, f1, fClock, fDate, fDur, fHourShort, fInt, fPct, frame, monthTicks, seqInterp, typeColor, typeLabel, xAxis,
 } from '../core';
-import { KINDS, MS, msLabel, msWhen, showMs } from '../milestones';
+import { KINDS, msLabel, msWhen, showMs, visibleMs } from '../milestones';
 
 // ---------- calendar ----------
 export const CAL_METRICS = [
@@ -50,7 +50,7 @@ export function drawCal(el: HTMLElement): Out {
         TIP.show(e, `${DOWS[d.dow]} ${fDate(d.d)}`, [[M.label, M.get(d) == null ? 'not recorded' : M.f(M.get(d))], ...ws.map((w: any) => [typeLabel(w) + (w.outdoor ? '' : w.setting === 'indoor' ? ' (indoor)' : ''), w.dist > 0.05 ? f1(w.dist) + ' mi' : fDur(w.dur), typeColor(w.type)])]);
       })
       .on('pointerleave', TIP.hide);
-    if (showMs()) for (const m of MS.list) {
+    if (showMs()) for (const m of visibleMs()) {
       const y0 = Math.round((Date.UTC(y, 0, 1) - G.D0) / G.DAY), y1 = Math.round((Date.UTC(y + 1, 0, 1) - G.D0) / G.DAY) - 1;
       const c = KINDS[m.kind].c, col = (d: number) => Math.floor((d - y0 + jan1) / 7) * cell, row = (d: number) => dayDate(d).getUTCDay() * cell;
       if (m.d2 != null && m.d2 >= y0 && m.d <= y1) gg.append('rect').attr('x', col(Math.max(m.d, y0))).attr('width', Math.max(2, col(Math.min(m.d2, y1)) - col(Math.max(m.d, y0)) + cell - 2)).attr('y', 7 * cell + 1).attr('height', 2).attr('rx', 1).style('fill', c).style('opacity', 0.8);
