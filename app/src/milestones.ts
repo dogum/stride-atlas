@@ -29,7 +29,7 @@ function set(items: any[]) {
 
 export async function loadMilestones() {
   // the dev server can read and write data/milestones.yaml; a static build reads the exported JSON
-  try {
+  if (import.meta.env.DEV) try {   // the endpoint exists only on the dev server
     const r = await fetch('/__stride/milestones');
     if (r.ok && (r.headers.get('content-type') || '').includes('json')) { MS.writable = true; set(await r.json()); return; }
   } catch { /* not the dev server */ }
