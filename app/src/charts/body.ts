@@ -41,7 +41,10 @@ export function drawHrr(el: HTMLElement): Out {
     if (x(pts[0].d - 10) > 110) f.g.append('text').attr('class', 'annot').attr('x', x(pts[0].d - 10) / 2).attr('y', f.ih / 2 + 4).attr('text-anchor', 'middle').text('not recorded yet');
   }
   drawMilestones(f.g, x, f.ih, { y0: -10 });
-  f.g.append('g').selectAll('circle').data(pts).join('circle').attr('class', 'a-dot').attr('cx', (r: any) => x(r.d)).attr('cy', (r: any) => yS(r.v)).attr('r', 2.2)
+  // the scale covers the middle 99% of values: the rest stay inside the frame rather than over the labels
+  const cid = `hrrclip${Math.random().toString(36).slice(2, 8)}`;
+  f.svg.append('defs').append('clipPath').attr('id', cid).append('rect').attr('x', -3).attr('y', -3).attr('width', f.iw + 6).attr('height', f.ih + 6);
+  f.g.append('g').attr('clip-path', `url(#${cid})`).selectAll('circle').data(pts).join('circle').attr('class', 'a-dot').attr('cx', (r: any) => x(r.d)).attr('cy', (r: any) => yS(r.v)).attr('r', 2.2)
     .style('fill', (r: any) => typeColor(r.type || 'other')).style('opacity', 0.5);
   // the median of the 61 workouts around each one, smoothed over 15 more so single readings do not step the line
   const rm = rollingMean(rollingMedian(pts.map((r: any) => r.v), 61), 15);

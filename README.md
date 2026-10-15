@@ -39,6 +39,7 @@ sources (another watch, sleep apps, the phone's bedtime schedule, the Apple Watc
 the same night: each night keeps one, and old sleep-window trackers are marked as estimates rather than read as sleep.
 
 <p align="center"><img src="docs/images/sleep.png" alt="Every night since 2018, one column per night coloured by sleep stage, with life milestones" width="100%"></p>
+<p align="center"><img src="docs/images/breathing.png" alt="Sleep apnea notifications as 30-day windows, with the simplest rule that tells notified windows from quiet ones" width="72%"></p>
 
 **Life milestones.** Add the dates that explain your data (a child born, working from home, a new commute, a move, an
 injury) and they appear faintly on every chart with a date axis, on both pages, in the map replay and as rings in the 3D
@@ -46,6 +47,7 @@ stack. Click **Milestones** in the app or edit `data/milestones.yaml`; they stay
 their labels.
 
 <p align="center">
+<img src="docs/images/sound.png" alt="Every hour of every month, coloured by how loud it was around you" width="49%"> <img src="docs/images/heart.png" alt="Heart-rate recovery one minute after every workout" width="49%">
 <img src="docs/images/records.png" alt="Records" width="49%"> <img src="docs/images/closeup.png" alt="Close-up of one hike" width="49%">
 <img src="docs/images/streets.png" alt="Streets walked near home" width="49%"> <img src="docs/images/sensors.png" alt="Devices and metrics over time" width="49%">
 </p>

@@ -2,6 +2,11 @@
 
 What changed between releases, newest first. Every judgment call behind these is in [docs/DECISIONS.md](docs/DECISIONS.md).
 
+## Unreleased
+
+- README images for Sound, Heart and movement, and Breathing (from the demo).
+- Heart-rate recovery: the few values beyond the chart's range stay inside its frame instead of drawing over the labels.
+
 ## 0.4.0 (2026-10-15): Sound
 
 After pulling, run `make all` (or `make export` if nothing else changed) and reload the app.
