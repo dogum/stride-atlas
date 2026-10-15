@@ -42,6 +42,10 @@ APPLE_FIRST = date(2018, 1, 1)           # the phone's first day in Health
 WATCH_FROM, ULTRA_FROM = date(2019, 3, 16), date(2023, 10, 1)
 MOBILITY_FROM, DAYLIGHT_FROM = date(2020, 9, 17), date(2023, 10, 1)
 DENSE_HR_FROM = date(2025, 6, 1)         # the export only carries dense workout heart rate for recent workouts
+HRR_FROM = date(2022, 9, 12)              # watchOS 9: cardio recovery one minute after a workout
+STEADY_FROM = date(2021, 9, 20)           # iOS 15: walking steadiness, one value a week
+APNEA_ANCHOR = date(2025, 6, 10)          # the 30-day grid of sleep apnea notifications, and the windows that notify
+APNEA_NOTIFIED = (0, 1, 12, 13, 14)       # summer 2025 and summer 2026
 STRAVA_FROM, STRAVA_TO = date(2016, 4, 2), date(2019, 3, 10)
 NAME = "Alex"
 WATCH_SRC = {"Watch4,2": f"{NAME}’s Apple Watch", "Watch7,5": f"{NAME}’s Apple Watch"}  # the second one has the non-breaking space
@@ -604,6 +608,13 @@ class Demo:
                 hr_vals.append(bpm)
                 meta = '  <MetadataEntry key="HKMetadataKeyHeartRateMotionContext" value="2"/>\n'
                 self.W.rec("HeartRate", WATCH_SRC[w_hw[0]], w_hw, "count/min", at, at, round(bpm), meta)
+            # cardio recovery: how far heart rate drops in the minute after a walk, run or hike ends (its own stream, so
+            # adding it changed nothing else in the export)
+            if source == "watch" and d >= HRR_FROM and kind in ("walk", "run", "hike", "fastwalk") and not fragment:
+                hr_ = self._rng("hrr", kind, start.isoformat())
+                t_ = end + timedelta(minutes=float(hr_.uniform(2, 4)))
+                drop = 21 + 13 * fit + {"walk": 0, "fastwalk": 4, "hike": 5, "run": 10}[kind] + hr_.normal(0, 4)
+                self.W.rec("HeartRateRecoveryOneMinute", WATCH_SRC[w_hw[0]], w_hw, "count/min", t_, t_, round(float(np.clip(drop, 8, 60)), 2))
         # steps during the workout land in the watch and phone step records (see days())
         if kind in ("walk", "run", "hike", "fastwalk") and dist_m and not fragment:
             stride = {"walk": 0.74, "fastwalk": 0.95, "run": 1.1, "hike": 0.68}[kind]
@@ -776,6 +787,20 @@ class Demo:
                     W.rec("WalkingStepLength", PHONE_SRC, ph, "in", at, at + timedelta(minutes=8), round(float(rng.normal(26.5 + 1.5 * f, 1.0)), 2))
                     W.rec("WalkingDoubleSupportPercentage", PHONE_SRC, ph, "%", at, at + timedelta(minutes=8), round(float(rng.normal(0.285 - 0.02 * f, 0.012)), 4))
                     W.rec("WalkingAsymmetryPercentage", PHONE_SRC, ph, "%", at, at + timedelta(minutes=8), round(float(abs(rng.normal(0.02, 0.015))), 4))
+                if d >= MOBILITY_FROM:
+                    mo = self._rng("mobility", d.isoformat())
+                    if mo.random() < 0.45:   # stairs, up and down, in the units the phone writes (ft/s)
+                        for _ in range(int(mo.integers(1, 4))):
+                            at = datetime(d.year, d.month, d.day, int(mo.integers(8, 21)), int(mo.integers(0, 59)), tzinfo=tz)
+                            W.rec("StairAscentSpeed", PHONE_SRC, ph, "ft/s", at, at + timedelta(seconds=8), round(float(mo.normal(1.55 + 0.25 * f, 0.18)), 4))
+                            W.rec("StairDescentSpeed", PHONE_SRC, ph, "ft/s", at + timedelta(minutes=30), at + timedelta(minutes=30, seconds=7), round(float(mo.normal(1.85 + 0.2 * f, 0.22)), 4))
+                    if dow == 0:             # the six-minute walk estimate sits at the 500 m it tops out at
+                        at = datetime(d.year, d.month, d.day, 2, tzinfo=tz)
+                        W.rec("SixMinuteWalkTestDistance", PHONE_SRC, ph, "m", at, at, 500)
+                    if d >= STEADY_FROM and dow == 0:
+                        at = datetime(d.year, d.month, d.day, 2, tzinfo=tz)
+                        yrs = (d - STEADY_FROM).days / 365.25
+                        W.rec("AppleWalkingSteadiness", PHONE_SRC, ph, "%", at - timedelta(days=7), at, round(float(np.clip(mo.normal(0.965 - 0.006 * yrs + 0.01 * f, 0.02), 0.6, 1)), 4))
             if wa and not dead_phone:
                 src = WATCH_SRC[wa[0]]
                 rest = 61 - 6 * f + 1.5 * math.cos(2 * math.pi * (d.timetuple().tm_yday - 15) / 365.25) + rng.normal(0, 1.4)
@@ -888,12 +913,23 @@ class Demo:
                     for h in np.sort(rng.uniform(onset + 0.5, wake - 0.3, 4)):
                         W.rec("OxygenSaturation", src, wa, "%", at(h), at(h), round(float(np.clip(rng.normal(0.962, 0.011), 0.9, 1)), 2))
                 if d >= date(2024, 9, 16):
-                    W.rec("AppleSleepingBreathingDisturbances", src, wa, "count", at(onset), at(wake), round(float(abs(rng.normal(5.8, 1.9))), 2))
+                    k = (d - APNEA_ANCHOR).days // 30
+                    yrs = (d - date(2024, 9, 16)).days / 365.25
+                    mu, sd = (12.6, 2.4) if k in APNEA_NOTIFIED else (6.2 + 1.1 * yrs, 2.0)
+                    W.rec("AppleSleepingBreathingDisturbances", src, wa, "count", at(onset), at(wake), round(float(abs(rng.normal(mu, sd))), 2))
                 # a weekend nap
                 if dow in (5, 6) and rng.random() < 0.12:
                     n0 = at(rng.uniform(37.5, 39.5))       # 1:30 to 3:30 pm the next day
                     W.rec("SleepAnalysis", src, wa, None, n0, n0 + timedelta(minutes=float(rng.uniform(18, 55))), "HKCategoryValueSleepAnalysisAsleepCore" if d >= stages_from else "HKCategoryValueSleepAnalysisAsleepUnspecified", cat=True)
             d += timedelta(days=1)
+        # each notification covers the 30 days it judged, written when it was sent
+        for k in APNEA_NOTIFIED:
+            a0 = APNEA_ANCHOR + timedelta(days=30 * k)
+            a1 = a0 + timedelta(days=30)
+            if a1 < EXPORT_AT.date():
+                wa = watch_on(a1)
+                W.rec("SleepApneaEvent", WATCH_SRC[wa[0]], wa, None, datetime(a0.year, a0.month, a0.day, tzinfo=TZ), datetime(a1.year, a1.month, a1.day, tzinfo=TZ),
+                      "HKCategoryValueNotApplicable", cat=True)
 
     @staticmethod
     def _night(rng, onset: float, wake: float, staged: bool, newborn: bool) -> list[tuple[float, float, str]]:

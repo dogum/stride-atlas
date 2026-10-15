@@ -220,7 +220,49 @@ def export_sleep(con) -> dict | None:
     con.unregister("si_df")
     (OUT / "sleep_runs.bin").write_bytes(runs[["start_min", "minutes", "stage"]].to_numpy().astype("<u2").tobytes())
     info = json.loads(con.execute("SELECT info FROM sleep_info").fetchone()[0])
-    return {"nights": int(len(nights)), "apnea_windows": info.get("apnea_windows", [])}
+    return {"nights": int(len(nights)), "apnea_windows": info.get("apnea_windows", []), "breathing": info.get("breathing")}
+
+
+# ------------------------------------------------------------------ heart and movement
+BODY_TYPES = ("HeartRateRecoveryOneMinute", "AppleWalkingSteadiness", "StairAscentSpeed", "StairDescentSpeed")
+
+
+def export_body(con) -> dict | None:
+    """body.parquet, long format (kind, date, value, n, type, id, src): heart-rate recovery one minute after each
+    workout (matched to the workout that ended within 10 minutes of it), weekly walking steadiness (dated by the week's
+    last day), and the daily median stair speed up and down. Local dates from the time-zone timeline. The six-minute
+    walk estimate is only counted: if every value sits at one number it says nothing over time."""
+    types = ", ".join(f"'HKQuantityTypeIdentifier{t}'" for t in BODY_TYPES)
+    con.execute(f"""CREATE OR REPLACE TEMP TABLE bloc AS
+        SELECT replace(q.type, 'HKQuantityTypeIdentifier', '') AS t, q.device_class AS src, q.value_si AS v, q.start_utc,
+               CAST(timezone(s.tz, q.start_utc::TIMESTAMPTZ) AS DATE) AS d, CAST(timezone(s.tz, q.end_utc::TIMESTAMPTZ) AS DATE) AS d_end
+        FROM quantity_samples_clean q ASOF JOIN tz_segments s ON q.start_utc >= s.from_utc
+        WHERE q.type IN ({types}) AND q.value_si IS NOT NULL""")
+    n = con.execute("SELECT count(*) FROM bloc").fetchone()[0]
+    six = con.execute("""SELECT count(*), max(value_si), count(*) FILTER (WHERE value_si = (SELECT max(value_si) FROM quantity_samples_clean
+                           WHERE type = 'HKQuantityTypeIdentifierSixMinuteWalkTestDistance'))
+                         FROM quantity_samples_clean WHERE type = 'HKQuantityTypeIdentifierSixMinuteWalkTestDistance'""").fetchone()
+    if not n:
+        (OUT / "body.parquet").unlink(missing_ok=True)
+        return None
+    copy_parquet(con, """
+        WITH hrr AS (
+            SELECT b.*, (SELECT arg_min(w.workout_id, abs(epoch(w.end_utc) - epoch(b.start_utc))) FROM workouts_final w
+                         WHERE NOT w.is_fragment AND w.end_utc BETWEEN b.start_utc - INTERVAL 10 MINUTE AND b.start_utc + INTERVAL 10 MINUTE) AS wid
+            FROM bloc b WHERE t = 'HeartRateRecoveryOneMinute')
+        SELECT 'hrr' AS kind, strftime(coalesce(w.local_date, h.d), '%Y-%m-%d') AS date, h.v AS value, 1 AS n, w.type, h.wid AS id, h.src
+        FROM hrr h LEFT JOIN workouts_final w ON w.workout_id = h.wid
+        UNION ALL
+        SELECT 'steady', strftime(d_end, '%Y-%m-%d'), v, 1, NULL, NULL, src FROM bloc WHERE t = 'AppleWalkingSteadiness'
+        UNION ALL
+        SELECT CASE t WHEN 'StairAscentSpeed' THEN 'stair_up' ELSE 'stair_down' END, strftime(d, '%Y-%m-%d'), median(v), CAST(count(*) AS INTEGER),
+               NULL, NULL, CASE WHEN count(DISTINCT src) = 1 THEN any_value(src) ELSE 'mixed' END
+        FROM bloc WHERE t IN ('StairAscentSpeed', 'StairDescentSpeed') GROUP BY t, d
+        ORDER BY 1, 2, 6""", "body.parquet")
+    k = dict(con.execute("SELECT t, count(*) FROM bloc GROUP BY t").fetchall())
+    return {"hrr": k.get("HeartRateRecoveryOneMinute", 0), "steady": k.get("AppleWalkingSteadiness", 0),
+            "stairs": k.get("StairAscentSpeed", 0) + k.get("StairDescentSpeed", 0),
+            "six_min": {"n": six[0], "max_m": six[1], "at_max": six[2]} if six[0] else None}
 
 
 # ------------------------------------------------------------------ streams
@@ -594,6 +636,8 @@ def run() -> dict:
         out["streams"] = export_streams(con, w, home)
     with Timer("contours"):
         contours = export_contours(con, places, w)
+    with Timer("heart and movement"):
+        body_meta = export_body(con)
     with Timer("sleep"):
         sleep_meta = export_sleep(con)
         out["sleep_nights"] = sleep_meta["nights"] if sleep_meta else 0
@@ -621,7 +665,7 @@ def run() -> dict:
         meta = {
             "export_date": export_date, "home_tz": hs, "hr_max": float(params["hr_max"]), "hr_max_source": params["hr_max_source"], "hr_max_file_era": info.get("hr_max_file_era"),
             "zones_pct": paths.config()["heart_rate"]["zones_pct_of_max"], "year_min": year_min(con), "places": pl, "contours": contours,
-            "sleep": sleep_meta, "eddington": info.get("eddington"),
+            "sleep": sleep_meta, "body": body_meta, "eddington": info.get("eddington"),
             # which data folder these files came from (relative), so the dev server edits that folder's milestones
             "data_dir": paths.DATA.relative_to(paths.ROOT).as_posix() if paths.DATA.is_relative_to(paths.ROOT) else None, "weather_model": info.get("weather_model"), "fitness_model_start": info.get("fitness_model_start"),
             "counts": {"workouts": int(len(w)), "routes": int(len(ri)), "route_points": out["route_points"], "streams": out["streams"]},

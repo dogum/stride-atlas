@@ -1,6 +1,6 @@
 [project]
 name = "stride-atlas"
-version = "0.2.0"
+version = "0.3.0"
 description = "Local pipeline that turns an Apple Health export into the Stride Atlas dashboard"
 requires-python = ">=3.12,<3.13"
 dependencies = [

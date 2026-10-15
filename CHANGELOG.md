@@ -2,6 +2,29 @@
 
 What changed between releases, newest first. Every judgment call behind these is in [docs/DECISIONS.md](docs/DECISIONS.md).
 
+## 0.3.0 (2026-10-14): Breathing, heart and movement
+
+After pulling, run `make all` and reload the app.
+
+### Added
+
+- **Breathing**, a chapter on the Sleep page.
+  - Nightly breathing disturbances, with the watch's sleep apnea notifications shaded.
+  - The 30-day windows the notifications judge.
+  - The simplest rule that tells your notified windows from your quiet ones: a nightly level and a share of nights above it, fitted to your own data and reported with how many windows it matches. Apple does not publish its threshold, so this is labelled a reconstruction, never a diagnosis.
+  - Which nights run higher, by season, weekday, bedtime, hours asleep and deep sleep. Sleep data only.
+  - Share mode leaves the chapter out.
+- **Heart and movement**, a chapter after Pace and effort.
+  - How far heart rate drops in the minute after each workout (cardio recovery), by activity; click a dot to open the workout.
+  - Weekly walking steadiness, and stair speed up and down.
+  - The six-minute walk estimate is only counted: real exports sit at 500 m every time, which cannot show change.
+- **A 15-second cut of the video tour**, for posting an update (`node scripts/record.mjs --short`, or `?present=short`).
+- The demo person, Alex, now has cardio recovery, steadiness, stair speed and sleep apnea notifications.
+
+### Fixed
+
+- Stair speed is stored in m/s like every other speed. Exports write it in ft/s, which the unit table did not know.
+
 ## 0.2.0 (2026-10-14): Sleep and life milestones
 
 After pulling, run `make all` (it adds a `sleep` step) and reload the app.

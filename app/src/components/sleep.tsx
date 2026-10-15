@@ -9,17 +9,19 @@ import { armArrival, countTo, f1, fClock, fDate, fDur, fInt } from '../core';
 import { loadSleep } from '../data';
 import { ChHead, Panel } from './ui';
 import {
-  drawBarcode, drawBreathing, drawHypno, drawSleepClock, drawSleepDur, drawSleepMonth, drawSleepSources, drawSleepVitals, drawSleepWeek,
+  drawBarcode, drawBreathFactors, drawBreathWindows, drawBreathing, drawHypno, drawSleepClock, drawSleepDur, drawSleepMonth, drawSleepSources, drawSleepVitals, drawSleepWeek,
   drawStageTrend, drawTempDev, drawTypicalNight, measured, nightStats, nightsIn, openNight, sleepRecords,
 } from '../charts/sleep';
 
-export const SLEEP_CHAPTERS = [['nights', 'Nights'], ['timing', 'Duration & timing'], ['stages', 'Stages'], ['onenight', 'One night'], ['vitals', 'Overnight vitals'], ['srecords', 'Records'], ['ssources', 'Sources']];
+// Breathing is medical: share mode leaves the chapter (and its place in the nav) out, so it never reaches a screenshot or a video
+export const SLEEP_CHAPTERS = [['nights', 'Nights'], ['timing', 'Duration & timing'], ['stages', 'Stages'], ['onenight', 'One night'], ['vitals', 'Overnight vitals'], ['breathing', 'Breathing'], ['srecords', 'Records'], ['ssources', 'Sources']];
+export const SHARE_HIDDEN = new Set(['breathing']);
 const W = ['sleep', 'milestones', 'night'];
 
 export function SleepView() {
   const [state, setState] = useState<'loading' | 'ready' | 'none'>(G.sleep ? 'ready' : G.sleep === null ? 'none' : 'loading');
   useEffect(() => { loadSleep().then(s => { setState(s ? 'ready' : 'none'); emit('sleep'); }); }, []);
-  useWatch(['filter', 'sleep']);
+  useWatch(['filter', 'sleep', 'share']);
   if (state === 'loading') return <main><div className="empty" style={{ padding: 60 }}>Reading every night…</div></main>;
   if (state === 'none') return (
     <main><section className="chapter" id="nights"><ChHead idx={10} eyebrow="Sleep" title="No sleep records yet">
@@ -51,9 +53,16 @@ export function SleepView() {
         <div className="grid">
           <Panel id="svit" cls="c12" title="Heart, breathing and blood oxygen asleep" draw={drawSleepVitals} watch={W} foot={<><code>HeartRate</code><code>HeartRateVariabilitySDNN</code><code>RespiratoryRate</code><code>OxygenSaturation</code><span>Samples inside each night's sleep, watch only</span></>} />
           <Panel id="stemp" cls="c12" title="Wrist temperature" draw={drawTempDev} watch={W} foot={<><code>AppleSleepingWristTemperature</code><span>One value per night; the baseline is the median of the previous 30</span></>} />
-          <Panel id="sbreath" cls="c12" title="Breathing disturbances" draw={drawBreathing} watch={W} foot={<><code>AppleSleepingBreathingDisturbances</code><code>SleepApneaEvent</code><span>Apple's notifications cover 30-day windows; they are not a diagnosis</span></>} />
         </div>
       </section>
+      {!S.share && <section className="chapter" id="breathing">
+        <ChHead idx={17} eyebrow="Breathing" title="Breathing at night">The watch counts brief interruptions to breathing every night, and sends a sleep apnea notification when they stay elevated across a 30-day window. A screening signal, not a diagnosis. Share mode hides this chapter.</ChHead>
+        <div className="grid">
+          <Panel id="sbreath" cls="c12" title="Breathing disturbances, every night" draw={drawBreathing} watch={W} foot={<><code>AppleSleepingBreathingDisturbances</code><code>SleepApneaEvent</code><span>One value per night from the watch; notifications cover 30-day windows</span></>} />
+          <Panel id="swin" cls="c7" title="The 30-day windows" draw={drawBreathWindows} watch={W} foot={<span>The rule is fitted to your own notified and quiet windows (sleep.breathing in the pipeline); Apple does not publish its threshold</span>} />
+          <Panel id="sfact" cls="c5" title="Which nights run higher" draw={drawBreathFactors} watch={W} />
+        </div>
+      </section>}
       <SleepRecords />
       <section className="chapter" id="ssources">
         <ChHead idx={14} eyebrow="Sources" title="Where each night came from">An export can hold sleep from another watch, sleep apps, the phone's bedtime schedule and the Apple Watch, often for the same night. Each night keeps one.</ChHead>

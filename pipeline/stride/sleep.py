@@ -29,6 +29,8 @@ NAP_MIN = 10            # a daytime session shorter than this is noise, not a na
 NAP_MAX = 4 * 60        # and one longer than this is a misplaced record, not a nap
 MAX_SPAN_MIN = 20 * 60  # Z3: a source's records spanning more than this in one night are a stuck record, cut to the asleep part
 MIN_NIGHT_MIN = 60      # Z1: less than an hour asleep is not a night's sleep (it can still be a nap)
+WINDOW_DAYS = 30        # sleep apnea notifications judge breathing disturbances over 30-day windows
+WINDOW_MIN_NIGHTS = 10  # fewer measured nights than this and a window cannot say much either way
 
 
 def source_label(name: str) -> str:
@@ -273,6 +275,55 @@ def apnea_windows(con) -> list[dict]:
     return [{"from": str(a), "to": str(b)} for a, b in r]
 
 
+def breathing(nights: pd.DataFrame, events: list[dict]) -> dict | None:
+    """The 30-day windows behind sleep apnea notifications, and the simplest rule that tells this export's notified
+    windows from its quiet ones: a nightly level of breathing disturbances and a share of nights above it.
+
+    The windows are a 30-day grid anchored on the first notification (else on the first night measured); a night
+    belongs to the window its date (the evening it began) falls in. Apple does not publish its threshold, so the rule
+    is fitted to the windows here, reported with how many it gets right, and labelled a reconstruction. Without both
+    notified and quiet windows there is nothing to fit, and no rule. The window still open at the export is shown
+    but not used for the fit."""
+    b = nights.loc[nights.bdist.notna(), ["date", "bdist"]].copy()
+    if len(b) < WINDOW_MIN_NIGHTS:
+        return None
+    b["d"] = pd.to_datetime(b.date)
+    first, last = b.d.min(), pd.to_datetime(nights.date).max()
+    starts = sorted(pd.Timestamp(e["from"]) for e in events)
+    anchor = starts[0] if starts else first
+    k0, k1 = (first - anchor).days // WINDOW_DAYS, (b.d.max() - anchor).days // WINDOW_DAYS
+    wins, vals = [], []
+    for k in range(k0, k1 + 1):
+        a = anchor + pd.Timedelta(days=WINDOW_DAYS * k)
+        z = a + pd.Timedelta(days=WINDOW_DAYS)
+        v = b.bdist[(b.d >= a) & (b.d < z)].to_numpy(float)
+        wins.append({"from": a.date().isoformat(), "to": z.date().isoformat(), "nights": int(len(v)),
+                     "median": round(float(np.median(v)), 2) if len(v) else None,
+                     # a notification's window may start a day or two off the grid after a gap in wear
+                     "notified": any(abs((s - a).days) <= 3 for s in starts), "open": bool(z > last + pd.Timedelta(days=1))})
+        vals.append(v)
+    use = [i for i, w in enumerate(wins) if not w["open"] and w["nights"] >= WINDOW_MIN_NIGHTS]
+    y = np.array([wins[i]["notified"] for i in use], bool)
+    rule = None
+    if y.any() and not y.all():
+        best = None
+        for level in np.arange(5.0, 20.01, 0.5):
+            sh = np.array([float(np.mean(vals[i] > level)) for i in use])
+            margin = sh[y].min() - sh[~y].max()
+            for cut in np.unique(sh):
+                key = (int(((sh >= cut) == y).sum()), round(margin, 6), -level)
+                if best is None or key > best[0]:
+                    best = (key, float(level), float(cut), sh)
+        (agree, margin, _), level, cut, sh = best
+        if margin > 0:   # a clean split: the cut sits halfway between the quiet and the notified windows
+            cut = (sh[y].min() + sh[~y].max()) / 2
+        rule = {"level": level, "cut": round(cut, 3), "notified_min": round(float(sh[y].min()), 3), "quiet_max": round(float(sh[~y].max()), 3),
+                "agree": agree, "of": int(len(use))}
+    for w, v in zip(wins, vals):
+        w["share"] = round(float(np.mean(v > rule["level"])), 3) if rule and len(v) else None
+    return {"windows": wins, "rule": rule, "min_nights": WINDOW_MIN_NIGHTS}
+
+
 def run() -> dict:
     con = paths.connect()
     out: dict = {}
@@ -295,7 +346,8 @@ def run() -> dict:
     con.register("r_df", runs)
     con.execute("CREATE OR REPLACE TABLE sleep_runs AS SELECT * FROM r_df ORDER BY date, start_min")
     con.unregister("r_df")
-    con.execute("CREATE OR REPLACE TABLE sleep_info AS SELECT ? AS info", [json.dumps({"apnea_windows": apnea_windows(con)})])
+    events = apnea_windows(con)
+    con.execute("CREATE OR REPLACE TABLE sleep_info AS SELECT ? AS info", [json.dumps({"apnea_windows": events, "breathing": breathing(nights, events)})])
     # the sleep rules' rows in cleaning_log, replaced on every run
     run_at = con.execute("SELECT max(run_at) FROM cleaning_log").fetchone()[0] if con.execute(
         "SELECT count(*) FROM information_schema.tables WHERE table_name = 'cleaning_log'").fetchone()[0] else None

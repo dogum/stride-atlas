@@ -127,10 +127,14 @@ export async function loadCore(progress: (s: string) => void) {
 }
 
 export async function loadRest() {
-  const [be, loops, laps, recs, ng, swimLaps, wxT, wxY, health, sensors, splits] = await Promise.all([
+  const [be, loops, laps, recs, ng, swimLaps, wxT, wxY, health, sensors, splits, body] = await Promise.all([
     pq('best_efforts.parquet'), pq('loops.parquet'), pq('loop_laps.parquet'), pq('records.parquet'), pq('new_ground.parquet'),
     pq('swim_laps.parquet'), pq('wx_model_temp.parquet'), pq('wx_model_year.parquet'), js('health.json'), js('sensors.json'), pq('splits.parquet'),
+    pq('body.parquet'),
   ]);
+  // heart and movement (export.export_body): one list per kind, values still SI (m/s, a fraction for steadiness)
+  const by = (k: string) => body.filter((r: any) => r.kind === k).map((r: any) => ({ ...dayParts(r.date), v: r.value, n: r.n, type: r.type, id: r.id, src: r.src }));
+  G.body = body.length ? { hrr: by('hrr'), steady: by('steady'), up: by('stair_up'), down: by('stair_down'), six: G.meta?.body?.six_min ?? null } : null;
   G.splits = splits;
   G.bestEfforts = be.filter(r => G.byId.has(r.id)).map(r => ({ ...r, w: G.byId.get(r.id), t: r.seconds / 60, D: r.distance_m / MI }));
   G.loops = loops;
@@ -184,7 +188,10 @@ export function loadSleep(): Promise<any> {
       temp: r.temp_c != null ? degF(r.temp_c) : null, tempDev: r.temp_dev_c != null ? r.temp_dev_c * 1.8 : null, bdist: fin(r.bdist),
       off: r.seg_off ?? 0, n: r.seg_n ?? 0,
     }));
-    G.sleep = { nights, runs, byD: new Map(nights.map((n: any) => [n.d, n])), apnea: (G.meta?.sleep?.apnea_windows ?? []).map((w: any) => ({ d: dayParts(w.from).d, d2: dayParts(w.to).d })) };
+    // the 30-day windows sleep apnea notifications judge, and the rule fitted to them (sleep.breathing)
+    const br = G.meta?.sleep?.breathing;
+    const breathing = br ? { ...br, windows: br.windows.map((w: any) => ({ ...w, d: dayParts(w.from).d, d2: dayParts(w.to).d, y: dayParts(w.from).y, y2: dayParts(w.to).y })) } : null;
+    G.sleep = { nights, runs, byD: new Map(nights.map((n: any) => [n.d, n])), apnea: (G.meta?.sleep?.apnea_windows ?? []).map((w: any) => ({ d: dayParts(w.from).d, d2: dayParts(w.to).d })), breathing };
     return G.sleep;
   })();
 }

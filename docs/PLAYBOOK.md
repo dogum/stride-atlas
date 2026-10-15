@@ -188,6 +188,16 @@ Never write a subtitle that assumes a direction ("faster, and easier on the hear
 - **Browser details**: hyparquet returns 64-bit integers as BigInt (cast counts to INTEGER when exporting), and a
   `position: fixed` dialog inside a sticky header with `backdrop-filter` is trapped in the header (use a portal).
 
+### Breathing and other screening signals
+
+- **Do not invent a threshold the vendor does not publish.** Sleep apnea notifications judge 30-day windows; fit the
+  simplest rule to the user's own notified and quiet windows, say how many it matches, and call it a reconstruction.
+- **Medical views stay out of share mode** entirely, nav entry included, so no screenshot or video can carry them.
+- **A metric that never changes is not a flat line.** One export's six-minute walk estimates were all exactly 500 m for
+  years; count them and say so rather than drawing a measurement.
+- **The parse fingerprint must cover the conversion table.** An unchanged export skips parsing, so a unit added to the
+  table (ft/s, which stair speed arrives in) never reached stored values until the fingerprint included the table.
+
 ## 13. Presentation and recording
 
 - **A compact home area and share mode can empty the 3D view.** In the first build the median home walk stayed within
@@ -209,6 +219,10 @@ Never write a subtitle that assumes a direction ("faster, and easier on the hear
   the time until recording stopped, or the video ends early and the music runs past it.
 - **Synthesised music needs checking by numbers, not ears**: deterministic seed, every note faded out (no clicks), peak
   under -1 dBFS, mids loud enough for phone speakers; loudness is normalised when muxing.
+- **Short cuts need hard cuts.** In a 15-second video a scroll between far-apart chapters passes half-drawn panels;
+  jump on the beat instead, and when switching pages, scroll to the top first and wait for the first chart to exist.
+- **A requestAnimationFrame timestamp can be earlier than `performance.now()` taken just before.** Clamp tween
+  progress at 0, or an ease-out overshoots below its start for one frame (a count-up from 0 showed "−531 nights").
 
 ## 14. Ideas not built yet
 

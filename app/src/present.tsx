@@ -11,10 +11,10 @@ import { F, G, REG, S, emit, useWatch } from './store';
 import { MONTHS, customTitle, f1, fDate, fDur, fInt, fK, fPace } from './core';
 import { RECORDS } from './charts/terrain';
 import { openCloseup } from './charts/closeup';
-import { loadStreets } from './data';
+import { loadSleep, loadStreets } from './data';
 import { streetShares } from './charts/streets';
 import { Topo } from './components/ui';
-import { CREDIT } from './credits';
+import { CREDIT, VERSION } from './credits';
 
 type Caption = { eyebrow?: string; title: string; sub?: string; right?: boolean } | null;
 type Card = { kind: 'hero' | 'end'; title: string; sub: string; foot?: string; url?: string; credit?: string } | null;
@@ -22,6 +22,8 @@ const P = { cap: null as Caption, card: null as Card, kind: 'end', running: fals
 // the card keeps its kind while it fades out
 const set = (patch: Partial<typeof P>) => { Object.assign(P, patch); if (patch.card) P.kind = patch.card.kind; emit('present'); };
 export const PRESENT = new URLSearchParams(location.search).get('present');
+// ?present=short: the 15-second cut for posting an update (what is new, a beat each)
+export const SHORT = PRESENT === 'short';
 
 export const BPM = 128;
 const BAR = 4 * 60000 / BPM; // ms; one bar is 1.875 s
@@ -37,7 +39,7 @@ const tall = () => innerHeight > innerWidth;
 function tween(ms: number, fn: (k: number) => void, e = ease) {
   return new Promise<void>(ok => {
     const t0 = performance.now();
-    const tick = (t: number) => { const k = Math.min(1, (t - t0) / ms); fn(e(k)); if (k < 1 && !P.stop) requestAnimationFrame(tick); else ok(); };
+    const tick = (t: number) => { const k = Math.max(0, Math.min(1, (t - t0) / ms)); fn(e(k)); if (k < 1 && !P.stop) requestAnimationFrame(tick); else ok(); };
     requestAnimationFrame(tick);
   });
 }
@@ -55,7 +57,7 @@ async function focus(sel: string, { ms = 700, center = false } = {}) {
     const r = e.getBoundingClientRect(), hh = headerH(), room = innerHeight - hh;
     const y = Math.max(0, Math.min(scrollY + r.top - hh - (center && r.height < room ? (room - r.height) / 2 : 14), document.documentElement.scrollHeight - innerHeight));
     if (Math.abs(y - scrollY) < 3) break;
-    await scrollToY(y, i ? 250 : ms);
+    await scrollToY(y, i ? Math.min(250, ms) : ms);
   }
   return e;
 }
@@ -259,6 +261,56 @@ function steps(x: ReturnType<typeof facts>, N: any): Step[] {
   return out;
 }
 
+// ---------------------------------------------------------------- the 15-second cut
+// Eight bars at 128 BPM are 15 seconds: the routes drawing under the title, then what this release added, then the
+// end card. The music drops when the 3D view lands. Share mode leaves the Breathing chapter out, and the tour never
+// goes near it.
+function shortSteps(x: ReturnType<typeof facts>): Step[] {
+  const out: Step[] = [];
+  // hard cuts on the beat: a long scroll would pass half-drawn chapters on the way
+  const cut = async (b: number, sel: string) => { await at(b - 0.06); cap(null); await focus(sel, { ms: 1 }); await at(b); };
+  const sources = `one Apple Health export${x.strava ? ' and a Strava archive' : ''}`;
+  out.push({ name: 'atlas', bars: 2, run: async b => {
+    set({ card: { kind: 'hero', title: 'Stride Atlas', sub: `v${VERSION}: what's new` } });
+    REG.atlas?.play(false, 1.9 * BAR / 1000);
+    await at(b + 1);
+    set({ card: null });
+    cap({ eyebrow: 'Every GPS route', title: `${fInt(x.gps.length)} routes, ${fInt(x.miles)} miles`, sub: `${x.years} years from ${sources}, drawn as light.` });
+  } });
+  if (REG.stack?.pieces?.length) out.push({ name: 'stack', bars: 1.5, run: async b => {
+    S.stackMode = 'date'; REG.stack.setMode('date'); emit('stack');
+    REG.stackSpin = 0.3;
+    await cut(b, '#p-stack');
+    cap({ eyebrow: 'New · Life milestones', title: 'The moments behind the data', sub: 'A move, a new baby, a new job: faint on every chart, and rings in 3D.' });
+    await clickAt(b + 0.75, btn('#p-stack .p-tools', 'Time of day'), 260);
+  } });
+  if ((G.body?.hrr?.length ?? 0) >= 10) out.push({ name: 'body', bars: 1, run: async b => {
+    await cut(b, '#p-hrr');
+    cap({ eyebrow: 'New · Heart & movement', title: 'How fast your heart recovers', sub: 'After every workout, with walking steadiness and stair speed.' });
+    await sweep(document.querySelector('#p-hrr .chart svg'), 0.75 * BAR, 0.35, 0.98, 0.45);
+  } });
+  if (G.sleep?.nights?.length) out.push({ name: 'sleep', bars: 2, run: async b => {
+    await at(b - 0.3);
+    cap(null); showCursor(false);
+    scrollTo(0, 0);
+    S.view = 'sleep'; emit('view');                    // a new page: the Sleep tab, from its top
+    await waitFor(() => !!document.querySelector('#p-barcode canvas, #p-barcode svg'), 1500);
+    await focus('#p-barcode', { ms: 1 });
+    await at(b);
+    const N = G.sleep.nights;
+    cap({ eyebrow: 'New · Sleep', title: `${fInt(N.length)} nights, one picture`, sub: `Every night since ${N[0].y}, colored by stage, one source per night.` });
+    await cut(b + 1, '#stages');
+    cap({ eyebrow: 'New · Sleep', title: 'Deep, core and REM', sub: 'And a typical night, lined up at the moment you fell asleep.' });
+  } });
+  out.push({ name: 'end', bars: 1.5, run: async b => {
+    await at(b - 0.2);
+    cap(null); showCursor(false);
+    set({ card: { kind: 'end', title: 'Stride Atlas', sub: `New in v${VERSION}: sleep, life milestones, heart and movement.`, foot: 'Free and open source', url: CREDIT.repo ? CREDIT.repo.replace(/^https?:\/\/(www\.)?/, '') : undefined, credit: `by ${CREDIT.by} · built with ${CREDIT.with}` } });
+    await at(b + 1.5);
+  } });
+  return out;
+}
+
 // the frame before the first bar: the map fills the screen under the header, empty, everything drawn and loaded
 async function prep() {
   if (P.prepped) return;
@@ -269,7 +321,8 @@ async function prep() {
   const x = facts();
   if (x.long) openCloseup(x.long.w.id, false);           // draw the close-up now, not when the tour gets there
   S.colorBy = 'year'; emit('colorBy');
-  S.place = -1; emit('place');
+  // the short cut has no time for the flight home: it opens there (routes in many places are specks on the whole map)
+  S.place = SHORT && x.gps.some((w: any) => w.place === 0) ? 0 : -1; emit('place');
   await new Promise(r => setTimeout(r, 300));
   const m = document.querySelector('#mapwrap') as HTMLElement;
   scrollTo(0, scrollY + m.getBoundingClientRect().top - headerH() - 12);
@@ -279,6 +332,7 @@ async function prep() {
   CUR.x = innerWidth * 0.78; CUR.y = innerHeight * 0.72; placeCursor();
   await waitFor(() => !!REG.stack?.pieces?.length || !REG.stack, 8000);
   REG.stack?.fit();
+  if (SHORT) await loadSleep().catch(() => null);
   set({ prepped: true });
 }
 
@@ -288,10 +342,12 @@ async function start() {
   set({ running: true, done: false, stop: false });
   const plan: { s: Step; b: number }[] = [];
   let bar = 0;
-  const N = await loadStreets().catch(() => null);
-  for (const s of steps(facts(), N)) { plan.push({ s, b: bar }); bar += s.bars; }
+  const N = SHORT ? null : await loadStreets().catch(() => null);
+  for (const s of SHORT ? shortSteps(facts()) : steps(facts(), N)) { plan.push({ s, b: bar }); bar += s.bars; }
   T0 = performance.now();
-  Object.assign(timeline, { t0: performance.timeOrigin + T0, bars: bar, cues: { drop: 2, outro: plan[plan.length - 1].b }, sections: plan.map(p => ({ name: p.s.name, bar: p.b })) });
+  // the soundtrack counts whole bars: the short cut's outro resolves on the bar after its end card fades in
+  const outro = SHORT ? Math.ceil(plan[plan.length - 1].b) : plan[plan.length - 1].b;
+  Object.assign(timeline, { t0: performance.timeOrigin + T0, bars: Math.ceil(bar), cues: { drop: 2, outro, ...(SHORT ? { accents: [] } : {}) }, sections: plan.map(p => ({ name: p.s.name, bar: p.b })) });
   set({ steps: plan.length });
   try {
     for (let i = 0; i < plan.length; i++) { set({ step: i }); await plan[i].s.run(plan[i].b); }

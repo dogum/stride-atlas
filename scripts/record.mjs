@@ -5,6 +5,7 @@
 //
 //   node scripts/record.mjs                 # 1920×1080, share mode on, data/video/stride-atlas-tour.mp4 (+ -music.mp4)
 //   node scripts/record.mjs --vertical      # 1080×1920 for phones
+//   node scripts/record.mjs --short         # the 15-second cut of what is new (?present=short), for posting an update
 //   options: --url http://localhost:5173  --out data/video  --name stride-atlas-tour  --fps 30  --no-share  --light  --no-music
 // Share mode is on unless --no-share: the privacy zone around home stays hidden in anything you post.
 // The tour keeps time at a fixed tempo and reports where its bars fell; the soundtrack (pipeline/stride/soundtrack.py,
@@ -19,9 +20,9 @@ import { launch, sleep } from './lib/cdp.mjs';
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(`--${k}`); if (i < 0) return d; const v = args[i + 1]; args.splice(i, 2); return v; };
 const flag = k => { const i = args.indexOf(`--${k}`); if (i < 0) return false; args.splice(i, 1); return true; };
-const vertical = flag('vertical'), noShare = flag('no-share'), light = flag('light'), noMusic = flag('no-music');
+const vertical = flag('vertical'), noShare = flag('no-share'), light = flag('light'), noMusic = flag('no-music'), short = flag('short');
 const url = opt('url', 'http://localhost:5173'), outDir = resolve(opt('out', 'data/video')), fps = +opt('fps', 30);
-const name = opt('name', `stride-atlas-tour${vertical ? '-vertical' : ''}${light ? '-light' : ''}`);
+const name = opt('name', `stride-atlas-${short ? 'update' : 'tour'}${vertical ? '-vertical' : ''}${light ? '-light' : ''}`);
 // CSS viewport × 1.5 device pixels: 1280×720 → 1920×1080 keeps the desktop layout; 720×1280 → 1080×1920 gets the phone layout
 const [cw, ch] = vertical ? [720, 1280] : [1280, 720], scale = 1.5;
 const [pw, ph] = [Math.round(cw * scale), Math.round(ch * scale)];
@@ -31,7 +32,7 @@ const stamps = [];
 let timeline = null, stopAt = 0;
 const b = await launch({ width: cw, height: ch, scale, light, reducedMotion: false });
 try {
-  await b.open(`${url}/?present=1${noShare ? '' : '&share=1'}`);
+  await b.open(`${url}/?present=${short ? 'short' : '1'}${noShare ? '' : '&share=1'}`);
   await b.evaluate(`new Promise(ok => { const t = () => window.__present?.ready ? ok(true) : setTimeout(t, 100); t(); })`);
   await sleep(1500); // let the first panels draw
   await b.evaluate(`window.__present.prep().then(() => true)`); // the empty map, everything loaded
@@ -88,7 +89,7 @@ if (!noMusic && timeline?.bars) {
   execFileSync('uv', ['run', '--project', root, 'python', '-m', 'stride.soundtrack', '--bpm', String(timeline.bpm), '--bars', String(timeline.bars),
     '--drop', String(c.drop ?? 2), '--outro', String(c.outro ?? timeline.bars - 3), '--lead', lead.toFixed(3), '--length', secs.toFixed(3),
     // a crash where the 3D view and the close-up arrive
-    '--accents', (timeline.sections || []).filter(x => ['stack', 'closeup'].includes(x.name)).map(x => x.bar).join(','), '--out', wav], { stdio: 'inherit', cwd: root });
+    '--accents', (c.accents ?? (timeline.sections || []).filter(x => ['stack', 'closeup'].includes(x.name)).map(x => x.bar)).join(','), '--out', wav], { stdio: 'inherit', cwd: root });
   // −14 LUFS, the level the social platforms normalise to
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', out, '-i', wav, '-map', '0:v', '-map', '1:a', '-c:v', 'copy',
     '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11', '-ar', '48000', '-c:a', 'aac', '-b:a', '256k', '-shortest', '-movflags', '+faststart', outM], { stdio: 'inherit' });

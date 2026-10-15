@@ -12,6 +12,7 @@ import { BE, BS, LOOPS, availableDists, drawBestTable, drawEdd, drawFF, drawGrou
 import { drawLift, drawRides, drawSensors, drawSwim, drawSwolf } from './charts/misc';
 import { RINGS, ST, drawStreets } from './charts/streets';
 import { drawDedupe, drawRules } from './charts/health';
+import { drawHrr, drawMove, sixMinuteNote } from './charts/body';
 import { PRESENT, Presenter } from './present';
 import { SleepView } from './components/sleep';
 import { loadMilestones } from './milestones';
@@ -41,6 +42,11 @@ function PtempSeg() {
 function LoopsSeg() {
   useWatch(['loops']);
   return <Seg label="Lap times" options={[{ key: 'raw', label: 'Raw' }, { key: 'adjusted', label: 'Weather-adjusted' }]} value={LOOPS.mode} onPick={k => { LOOPS.mode = k; emit('loops'); }} />;
+}
+function MoveFoot() {
+  useWatch(['data']);
+  const six = sixMinuteNote();
+  return <><code>AppleWalkingSteadiness</code><code>StairAscentSpeed</code><code>StairDescentSpeed</code><span>{six ?? 'Steadiness is weekly, from the iPhone (iOS 15); stair speed from the phone or watch'}</span></>;
 }
 function StreetsCredit() { useWatch(['streets']); return <span>{G.streets?.attribution ?? '© OpenStreetMap contributors (ODbL)'}.</span>; }
 function RingSeg() {
@@ -104,7 +110,7 @@ export function App() {
     <>
       <div className="tip" id="tip" role="status" aria-live="polite" />
       <Header />
-      {PRESENT && S.view !== 'sleep' && <Presenter />}
+      {PRESENT && <Presenter />}
       {S.view === 'sleep' ? <SleepView /> : <main>
         <AtlasSection />
         <StackSection />
@@ -143,6 +149,14 @@ export function App() {
             <Panel id="fit" cls="c6" title="Resting heart rate and cardio fitness" draw={drawFit} foot={<><code>RestingHeartRate</code><code>VO2Max</code><span>Monthly mean with the 10th to 90th percentile band; gaps are months with no reading</span></>} />
             <Panel id="wxyear" cls="c5" title="Walking pace by year, weather removed" draw={drawWxYear} foot={<span>Same regression as the adjusted temperature view, evaluated at 60°F for each year</span>} />
             <Panel id="gait" cls="c7" title="Everyday walking, measured by your phone" draw={drawGait} foot={<><code>WalkingSpeed</code><code>WalkingStepLength</code><code>WalkingDoubleSupportPercentage</code><span>iPhone mobility metrics, from iOS 14</span></>} />
+          </div>
+        </section>
+
+        <section className="chapter" id="body">
+          <ChHead idx={16} eyebrow="Heart & movement" title="How the body keeps up">Recovery after workouts and how you move day to day: measured in the background by the watch and phone, not only during workouts.</ChHead>
+          <div className="grid">
+            <Panel id="hrr" cls="c12" title="How fast your heart recovers" draw={drawHrr} foot={<><code>HeartRateRecoveryOneMinute</code><span>Apple Watch, watchOS 9 and later; matched to the workout that ended just before</span></>} />
+            <Panel id="move" cls="c12" title="Steadiness and stairs" draw={drawMove} foot={<MoveFoot />} />
           </div>
         </section>
 

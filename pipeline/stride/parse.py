@@ -26,7 +26,7 @@ from lxml import etree
 from . import paths
 from .inventory import parse_device
 from .paths import Timer, norm
-from .units import parse_num_unit, sql_case, to_si
+from .units import CONVERT, parse_num_unit, sql_case, to_si
 from .xmlstream import iter_top
 
 CHUNK = 400_000
@@ -62,9 +62,14 @@ def workout_key(activity_type: str, source_name: str, start_utc: datetime, end_u
     return hashlib.sha1(raw.encode()).hexdigest()[:16]
 
 
+# Bump when parsing changes what lands in the tables; with the unit table it is part of the fingerprint, so an
+# unchanged export is parsed again once after such a change (a new unit conversion re-converts stored values).
+PARSE_VERSION = 1
+
+
 def fingerprint(xml: Path) -> str:
     st = xml.stat()
-    h = hashlib.sha1(f"{st.st_size}".encode())
+    h = hashlib.sha1(f"{st.st_size}|parse{PARSE_VERSION}|{sorted(CONVERT.items())}".encode())
     with open(xml, "rb") as f:
         h.update(f.read(4 << 20))
         f.seek(max(0, st.st_size - (4 << 20)))

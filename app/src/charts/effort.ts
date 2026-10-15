@@ -255,16 +255,18 @@ export function monthlyBand(days: any[], get: (d: any) => any) {
 export function bandChart(el: HTMLElement, rows: any[], opts: any) {
   const f = frame(el, opts.h || 150, { t: 18, r: 50, b: opts.axis ? 24 : 8, l: 44 });
   const has = rows.filter(r => r.m != null);
-  const x = d3.scaleLinear(d3.extent(F.days, (d: any) => d.d) as any, [0, f.iw]);
+  // `dom`: a shared day range for charts that start later than the daily records (default: every day in the filter)
+  const dom = opts.dom || d3.extent(F.days, (d: any) => d.d);
+  const x = d3.scaleLinear(dom, [0, f.iw]);
   if (!has.length) { f.g.append('text').attr('class', 'annot').attr('x', f.iw / 2).attr('y', f.ih / 2).attr('text-anchor', 'middle').text('not recorded in this range'); return f; }
   const yS = d3.scaleLinear([d3.min(has, r => r.lo)!, d3.max(has, r => r.hi)!], [f.ih, 0]).nice();
   yGrid(f.g, yS, f.iw, 3, opts.fmt || ((v: number) => v));
   // narrow charts get two-digit years so nine labels still fit
-  if (opts.axis) { const yt = yearTicks(F.years, F.days[0].d); const narrow = f.iw / Math.max(1, yt.length) < 46; xAxis(f.g, x, f.ih, { values: yt, fmt: (v: number) => narrow ? `'${String(dayDate(v).getUTCFullYear()).slice(2)}` : dayDate(v).getUTCFullYear() }); }
+  if (opts.axis) { const yt = yearTicks(F.years, F.days[0].d).filter((v: number) => v >= dom[0] && v <= dom[1]); const narrow = f.iw / Math.max(1, yt.length) < 46; xAxis(f.g, x, f.ih, { values: yt, fmt: (v: number) => narrow ? `'${String(dayDate(v).getUTCFullYear()).slice(2)}` : dayDate(v).getUTCFullYear() }); }
   drawMilestones(f.g, x, f.ih, { y0: -8 });
   // before the first sample the metric did not exist yet (sensor timeline): say so instead of drawing zeros
   const firstD = has[0].d;
-  if (firstD - F.days[0].d > 60) {
+  if (firstD - dom[0] > 60) {
     f.g.append('rect').attr('x', 0).attr('width', x(firstD - 15)).attr('y', 0).attr('height', f.ih).style('fill', 'var(--raised)').style('opacity', .7);
     if (x(firstD - 15) > 96) f.g.append('text').attr('class', 'annot').attr('x', x(firstD - 15) / 2).attr('y', f.ih / 2 + 4).attr('text-anchor', 'middle').text('not recorded yet');
   }

@@ -175,6 +175,7 @@ export function countTo(el: any, to: number, fmt: (v: number) => string) {
   if (REDUCED() || from === to || MODE.quiet) { el.textContent = fmt(to); return; }
   const t0 = performance.now(), dur = 900;
   cancelAnimationFrame(el._raf);
-  const tick = (t: number) => { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(from + (to - from) * e); if (k < 1) el._raf = requestAnimationFrame(tick); };
+  // a frame's timestamp can be a little earlier than t0: clamp, or the easing overshoots below `from` (a count from 0 showed negatives)
+  const tick = (t: number) => { const k = Math.max(0, Math.min(1, (t - t0) / dur)), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(from + (to - from) * e); if (k < 1) el._raf = requestAnimationFrame(tick); };
   el._raf = requestAnimationFrame(tick);
 }

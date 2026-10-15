@@ -447,26 +447,128 @@ export function drawSleepVitals(el: HTMLElement): Out {
   if (res[1]) parts.push('HRV ', [`${Math.round(a0(res[1]).v)} → ${Math.round(a1(res[1]).v)} ms`], '. ');
   return { sub: parts };
 }
+// ---------------------------------------------------------------- breathing (watchOS 11)
+// Sleep apnea notifications judge 30-day windows of nightly breathing disturbances. Apple does not publish its
+// threshold; when an export has notified and quiet windows, pipeline/stride/sleep.py fits the simplest rule that
+// tells them apart (a nightly level, a share of nights above it), and these charts show it as a reconstruction.
+const pct = (v: number) => `${Math.round(v * 100)}%`;
+const brIn = () => {
+  const B = G.sleep?.breathing;
+  return B ? { ...B, windows: B.windows.filter((w: any) => w.nights > 0 && w.y2 >= S.y0 && w.y <= S.y1) } : null;
+};
 export function drawBreathing(el: HTMLElement): Out {
   const N = nightsIn();
   const pts = N.filter((n: any) => n.bdist != null);
   if (pts.length < 20) return emptyState(el, 'Breathing disturbances come from an Apple Watch with sleep apnea notifications (watchOS 11, autumn 2024); not recorded in this range.');
-  const W = (G.sleep?.apnea ?? []) as any[];
+  const W = (G.sleep?.apnea ?? []) as any[], rule = G.sleep?.breathing?.rule;
+  const open = (G.sleep?.breathing?.windows ?? []).find((w: any) => w.open && rule && w.share >= rule.cut);
   const r = band(el, pts, (n: any) => n.bdist, { mean: false,
-    label: 'Breathing disturbances per hour asleep', color: css('--s4'), fmtEnd: (v: number) => f1(v), h: 230, dom: span(pts),
-    under: (f: any, x: any) => {
+    label: 'Breathing disturbances per hour asleep', color: css('--s1'), fmtEnd: (v: number) => f1(v), h: 250, dom: span(pts),
+    under: (f: any, x: any, yS: any) => {
       for (const w of W) { const a = Math.max(0, x(w.d)), b = Math.min(f.iw, x(w.d2)); if (b <= a) continue;
         f.g.append('rect').attr('x', a).attr('width', b - a).attr('y', 0).attr('height', f.ih).style('fill', 'var(--warning)').style('opacity', 0.12); }
+      if (open) { const a = Math.max(0, x(open.d)), b = Math.min(f.iw, x(open.d2));
+        if (b > a) f.g.append('rect').attr('x', a).attr('width', b - a).attr('y', 0.5).attr('height', f.ih - 1).style('fill', 'none').style('stroke', 'var(--warning)').style('stroke-dasharray', '3 3').style('opacity', 0.7); }
+      if (rule && yS(rule.level) > 0 && yS(rule.level) < f.ih) {
+        f.g.append('line').attr('x1', 0).attr('x2', f.iw).attr('y1', yS(rule.level)).attr('y2', yS(rule.level)).style('stroke', 'var(--warning)').style('stroke-dasharray', '4 4').style('opacity', 0.8);
+        f.g.append('text').attr('class', 'annot').attr('x', 4).attr('y', yS(rule.level) - 5).text(`elevated above ${f1(rule.level)}`);
+      }
     },
   });
   if (!r) return;
   const inW = W.filter(w => w.d2 >= pts[0].d && w.d <= pts[pts.length - 1].d).length;
+  const first = pts.slice(0, 90), last = pts.slice(-90);
+  const m0 = d3.median(first, (n: any) => n.bdist), m1 = d3.median(last, (n: any) => n.bdist);
+  const parts: any[] = ['The watch counts brief interruptions to breathing every night; the line is the median of the 31 nights around each date. '];
+  if (pts.length >= 180) parts.push('Your first three months ', [`${f1(m0)} per hour`], ', your last three ', [`${f1(m1)}`], '. ');
+  parts.push(inW ? [`${inW} sleep apnea notification${inW > 1 ? 's' : ''}`] : 'No sleep apnea notifications', inW ? ' shaded' : ' in this range', open ? '; the dashed window is still open and above the level its notified windows reached.' : '.');
+  return { sub: parts, legend: inW ? { items: [{ label: 'Sleep apnea notification (30 days)', c: css('--warning') }] } : undefined };
+}
+
+export function drawBreathWindows(el: HTMLElement): Out {
+  const B = brIn();
+  if (!B?.windows?.length || nightsIn().filter((n: any) => n.bdist != null).length < 20) return emptyState(el, 'No breathing disturbances in this range.');
+  const W = B.windows, rule = B.rule;
+  const val = (w: any) => rule ? w.share : w.median;
+  const f = frame(el, 300, { t: 22, r: 16, b: 24, l: 44 });
+  const x = d3.scaleLinear([W[0].d, W[W.length - 1].d2], [0, f.iw]);
+  const yS = rule ? d3.scaleLinear([0, 1], [f.ih, 0]) : d3.scaleLinear([0, d3.max(W, (w: any) => w.median)], [f.ih, 0]).nice();
+  yGrid(f.g, yS, f.iw, 4, rule ? pct : (v: number) => v);
+  yearAxis(f, x, [{ d: W[0].d, y: W[0].y, doy: 99 }, { d: W[W.length - 1].d2, y: W[W.length - 1].y2 }]);
+  drawMilestones(f.g, x, f.ih, { y0: -10 });
+  const few = (w: any) => w.nights < B.min_nights;
+  const status = (w: any) => w.open ? 'Still open at the export' : few(w) ? 'Too few nights to judge' : w.notified ? 'Notified' : 'Quiet';
+  f.g.append('g').selectAll('rect').data(W).join('rect').attr('class', 'a-bar')
+    .attr('x', (w: any) => x(w.d) + 1).attr('width', (w: any) => Math.max(1, x(w.d2) - x(w.d) - 2))
+    .attr('y', (w: any) => yS(val(w) ?? 0)).attr('height', (w: any) => f.ih - yS(val(w) ?? 0))
+    .style('fill', (w: any) => w.notified ? 'var(--warning)' : css('--s1')).style('opacity', (w: any) => few(w) ? 0.2 : w.open ? 0.25 : w.notified ? 0.85 : 0.45)
+    .style('stroke', (w: any) => w.open ? 'var(--warning)' : 'none').style('stroke-dasharray', '3 3');
+  if (rule) {
+    f.g.append('line').attr('x1', 0).attr('x2', f.iw).attr('y1', yS(rule.cut)).attr('y2', yS(rule.cut)).style('stroke', 'var(--ink-2)').style('stroke-dasharray', '4 4');
+    f.g.append('text').attr('class', 'annot').attr('x', 4).attr('y', yS(rule.cut) - 5).text(`notified above about ${pct(rule.cut)}`);
+  }
+  f.g.append('text').attr('class', 'alabel').attr('x', 0).attr('y', -8).text(rule ? `Share of nights above ${f1(rule.level)} per hour, each 30-day window` : 'Median per hour, each 30-day window');
+  f.svg.on('pointermove', (ev: any) => {
+    const [px] = d3.pointer(ev, f.g.node()), dd = x.invert(px);
+    const w: any = W.find((w: any) => dd >= w.d && dd < w.d2);
+    if (!w) return TIP.hide();
+    TIP.show(ev, `${fDate(w.d)} to ${fDate(w.d2 - 1)}`, [['Status', status(w), w.notified ? css('--warning') : css('--s1')], ['Nights measured', fInt(w.nights)],
+      ['Median', w.median != null ? `${f1(w.median)} per hour` : '–'], ...(rule ? [[`Above ${f1(rule.level)}`, pct(w.share)]] : [])] as any);
+  }).on('pointerleave', TIP.hide);
+  armArrival(el);
+  const legend = { items: [{ label: 'Notified', c: css('--warning') }, { label: 'Quiet', c: css('--s1') }] };
+  if (!rule) return { sub: ['Each bar is a 30-day window, the span a sleep apnea notification judges. With no notification in this export there is nothing to compare the quiet windows with.'], legend };
+  const open = W.find((w: any) => w.open);
   return {
-    sub: (inW ? ['The watch counts brief interruptions to breathing each night (the line is the median of the 31 nights around each date). ', [`${inW} sleep apnea notification${inW > 1 ? 's' : ''}`],
-      ' are shaded: the watch flags 30-day stretches where these stay elevated. It is a screening signal, not a diagnosis; a doctor and a sleep study are how it is confirmed.']
-      : ['The watch counts brief interruptions to breathing each night (the median of 31 nights is the line). No sleep apnea notifications in this range.']) as any,
-    legend: inW ? { items: [{ label: 'Sleep apnea notification (30 days)', c: css('--warning') }] } : undefined,
+    sub: ['Each bar is a 30-day window, the span a notification judges. On your data, a night above ', [`${f1(rule.level)} per hour`], ' counts as elevated: windows with ',
+      [`${pct(rule.notified_min)} or more`], ` such nights notified, and none with ${pct(rule.quiet_max)} or fewer did. That matches `, [`${rule.agree} of ${rule.of}`],
+      ` windows. A reconstruction from your own notifications, not Apple's algorithm, and not a diagnosis.${open && open.share != null ? ` The open window is at ${pct(open.share)} so far.` : ''}`],
+    legend,
   };
+}
+
+// which nights run higher: sleep-only groupings (season, weekday, bedtime, length, deep sleep), medians with the
+// middle half of nights; nothing from the activity data
+export function drawBreathFactors(el: HTMLElement): Out {
+  const P = nightsIn().filter((n: any) => n.bdist != null);
+  if (P.length < 40) return emptyState(el, 'Not enough nights with breathing disturbances in this range.');
+  const season = ['Winter', 'Winter', 'Spring', 'Spring', 'Spring', 'Summer', 'Summer', 'Summer', 'Autumn', 'Autumn', 'Autumn', 'Winter'];
+  const st = P.filter((n: any) => n.cls === 'stages' && n.deep != null && n.asleep);
+  const dq = st.length >= 30 ? d3.quantile(st.map((n: any) => n.deep / (n.asleep * 60)).sort(d3.ascending), 1 / 3) : null;
+  const dq2 = st.length >= 30 ? d3.quantile(st.map((n: any) => n.deep / (n.asleep * 60)).sort(d3.ascending), 2 / 3) : null;
+  const groups: [string, [string, (n: any) => boolean][]][] = [
+    ['Season', ['Winter', 'Spring', 'Summer', 'Autumn'].map(k => [k, (n: any) => season[n.m] === k])],
+    ['Night of the week', [['Sunday to Thursday', (n: any) => n.dow <= 4], ['Friday and Saturday', (n: any) => n.dow >= 5]]],
+    ['Asleep by', [['before 10:30 pm', (n: any) => n.on != null && n.on < 22.5], ['10:30 pm to midnight', (n: any) => n.on >= 22.5 && n.on < 24], ['after midnight', (n: any) => n.on >= 24]]],
+    ['Hours asleep', [['under 6', (n: any) => n.asleep != null && n.asleep < 6], ['6 to 7', (n: any) => n.asleep >= 6 && n.asleep < 7], ['7 or more', (n: any) => n.asleep >= 7]]],
+    ...(dq != null ? [['Deep sleep', [['least (lower third)', (n: any) => n.cls === 'stages' && n.deep / (n.asleep * 60) < dq!], ['middle third', (n: any) => n.cls === 'stages' && n.deep / (n.asleep * 60) >= dq! && n.deep / (n.asleep * 60) < dq2!], ['most (upper third)', (n: any) => n.cls === 'stages' && n.deep / (n.asleep * 60) >= dq2!]]] as any] : []),
+  ];
+  const rows: any[] = [];
+  for (const [g, cats] of groups) {
+    const rs = cats.map(([label, ok]) => { const v = P.filter(ok).map((n: any) => n.bdist).sort(d3.ascending); return v.length >= 15 ? { g, label, n: v.length, m: d3.quantileSorted(v, 0.5), lo: d3.quantileSorted(v, 0.25), hi: d3.quantileSorted(v, 0.75) } : null; }).filter(Boolean);
+    if (rs.length > 1) rows.push({ head: g, spread: d3.max(rs, (r: any) => r.m) - d3.min(rs, (r: any) => r.m) }, ...rs);
+  }
+  const RH = 19, f = frame(el, rows.length * RH + 34, { t: 8, r: 54, b: 24, l: 150 });
+  const x = d3.scaleLinear([d3.min(rows.filter(r => !r.head), (r: any) => r.lo), d3.max(rows.filter(r => !r.head), (r: any) => r.hi)], [0, f.iw]).nice();
+  xAxis(f.g, x, f.ih, { ticks: 4 });
+  const all = d3.median(P, (n: any) => n.bdist);
+  f.g.append('line').attr('x1', x(all)).attr('x2', x(all)).attr('y1', 0).attr('y2', f.ih).style('stroke', 'var(--ink-3)').style('stroke-dasharray', '3 3');
+  rows.forEach((r: any, i: number) => {
+    const y = i * RH + RH / 2 + 2;
+    if (r.head) { f.g.append('text').attr('class', 'alabel').attr('x', -f.m.l).attr('y', y + 4).text(r.head); return; }
+    f.g.append('text').attr('class', 'tick-l').attr('x', -10).attr('y', y + 4).attr('text-anchor', 'end').style('font-size', '11.5px').style('fill', 'var(--ink-2)').text(r.label);
+    f.g.append('line').attr('class', 'a-fade').attr('x1', x(r.lo)).attr('x2', x(r.hi)).attr('y1', y).attr('y2', y).style('stroke', css('--s1')).style('stroke-width', 3).style('opacity', 0.35).style('stroke-linecap', 'round');
+    f.g.append('circle').attr('class', 'a-dot').attr('cx', x(r.m)).attr('cy', y).attr('r', 4.5).style('fill', css('--s1'));
+    f.g.append('text').attr('class', 'dlabel mono').attr('x', f.iw + 8).attr('y', y + 4).text(f1(r.m));
+    f.g.append('rect').attr('x', -f.m.l).attr('y', y - RH / 2).attr('width', f.iw + f.m.l + f.m.r).attr('height', RH).style('fill', 'transparent')
+      .on('pointermove', (ev: any) => TIP.show(ev, `${r.g}: ${r.label}`, [['Median', `${f1(r.m)} per hour`, css('--s1')], ['Middle half', `${f1(r.lo)} to ${f1(r.hi)}`], ['Nights', fInt(r.n)]])).on('pointerleave', TIP.hide);
+  });
+  armArrival(el);
+  const heads = rows.filter(r => r.head).sort((a: any, b: any) => b.spread - a.spread);
+  const top = heads[0], tr = rows.filter((r: any) => r.g === top?.head);
+  const hi = d3.greatest(tr, (r: any) => r.m), lo = d3.least(tr, (r: any) => r.m);
+  return { sub: ['Median per hour, with the middle half of nights; the dashed line is all nights (', [f1(all)], '). Sleep only, nothing from the activity data. ',
+    ...(top && top.spread >= 0.5 ? [`The widest gap is by ${top.head.toLowerCase()}: `, [`${hi.label} ${f1(hi.m)}`], ` against ${lo.label} ${f1(lo.m)}.`] : ['No grouping differs by more than half an event an hour.'])] as any };
 }
 
 // ---------------------------------------------------------------- records

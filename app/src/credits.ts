@@ -1,5 +1,8 @@
 // The project's credit line, shown small in the page footer, the About chapter and the video's end card.
 // The MIT license lets you change anything here; if you build on Stride Atlas, a link back is appreciated.
+import { version } from '../package.json';
+
+export const VERSION = version;
 export const CREDIT = {
   by: 'Greg Dogum',
   with: 'Claude Code',

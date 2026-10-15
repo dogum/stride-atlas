@@ -96,3 +96,27 @@ def test_milestones_accept_days_months_and_periods():
     assert out[2]["date"] == "2023-02-01" and out[2]["precision"] == "month" and out[2]["end"] == "2023-03-20" and out[2]["public"]
     assert out[0]["kind"] == "other" and [m["id"] for m in out] == [0, 1, 2]
     assert np.all([m.get("public") is False for m in out[:2]])
+
+
+def test_breathing_windows_fit_a_rule_that_tells_notified_from_quiet():
+    rng = np.random.default_rng(1)
+    days = pd.date_range("2025-01-01", periods=310, freq="D")
+    anchor, hot = pd.Timestamp("2025-03-02"), (2, 3, 6)          # three windows notified
+    k = (days - anchor).days // 30
+    bd = np.where(np.isin(k, hot), rng.normal(13, 1.5, len(days)), rng.normal(7, 1.5, len(days)))
+    bd[::9] = np.nan                                              # nights without a value are left out, not zero
+    nights = pd.DataFrame({"date": days.strftime("%Y-%m-%d"), "bdist": bd})
+    events = [{"from": str((anchor + pd.Timedelta(days=30 * i)).date()), "to": str((anchor + pd.Timedelta(days=30 * i + 30)).date())} for i in hot]
+    out = Z.breathing(nights, events)
+    r, W = out["rule"], out["windows"]
+    assert r["agree"] == r["of"] and r["quiet_max"] < r["cut"] < r["notified_min"] and 7 < r["level"] < 13
+    assert W[0]["from"] == "2025-01-01" and sum(w["notified"] for w in W) == 3
+    assert W[-1]["open"] and not any(w["open"] for w in W[:-1])  # the last window runs past the export
+    assert all(w["share"] >= r["cut"] for w in W if w["notified"])
+
+
+def test_without_notifications_the_windows_have_no_rule():
+    days = pd.date_range("2025-01-01", periods=90, freq="D")
+    out = Z.breathing(pd.DataFrame({"date": days.strftime("%Y-%m-%d"), "bdist": 6.0}), [])
+    assert out["rule"] is None and out["windows"][0]["from"] == "2025-01-01" and out["windows"][0]["share"] is None
+    assert Z.breathing(pd.DataFrame({"date": ["2025-01-01"], "bdist": [np.nan]}), []) is None

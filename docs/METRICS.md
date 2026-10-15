@@ -165,6 +165,36 @@ One row per night in `sleep_nights` (rules Z1–Z5 in `docs/CLEANING.md`). Clock
 - **Medians and records** use measured nights only (not estimates, not time in bed only). Trend lines are rolling
   medians over nights (vitals: rolling means) and break across gaps of more than 30 days.
 
+### Breathing (sleep apnea notifications)
+
+Sleep apnea notifications (`SleepApneaEvent`) each cover a 30-day window of nightly breathing disturbances. Apple does
+not publish the threshold, so `sleep.breathing` reconstructs the simplest rule that fits the export:
+
+- **Windows**: a 30-day grid anchored on the first notification (else the first night measured). A night belongs to the
+  window its date (the evening it began) falls in. A window is **notified** when a notification starts within 3 days of
+  it, **open** when it runs past the last night in the export, and too thin to judge with fewer than 10 nights.
+- **Rule**: for each nightly level from 5 to 20 per hour in steps of 0.5, the share of each closed window's nights
+  above it; keep the level and share cut that classify the most windows correctly, then the widest gap between the
+  lowest notified share and the highest quiet one, then the lower level. With a clean split the cut sits halfway
+  between them. The rule, the count it gets right and each window's share are exported; with no notified window, or
+  no quiet one, there is no rule. It is labelled a reconstruction, never Apple's algorithm, and never a diagnosis.
+- **Which nights run higher**: medians and middle halves of nightly values grouped by season, night of the week,
+  time asleep by, hours asleep and deep-sleep share (thirds of staged nights); groups under 15 nights are left out.
+  Sleep values only: nothing from the activity data.
+- Share mode leaves the chapter out.
+
+## Heart and movement
+
+`body.parquet` (`export.export_body`), local dates from the time-zone timeline:
+
+- **Cardio recovery** (`HeartRateRecoveryOneMinute`, watchOS 9): the drop in heart rate one minute after a workout,
+  matched to the workout that ended within 10 minutes of the sample. Dots by activity; the line is the median of the 61 workouts around each, smoothed over 15.
+- **Walking steadiness** (`AppleWalkingSteadiness`, iOS 15): one value a week, dated by the week's last day.
+- **Stair speed** up and down (`StairAscentSpeed`, `StairDescentSpeed`): the median per day; stored in m/s, shown in
+  ft/s. Charts: monthly mean with the 10th to 90th percentile band.
+- **Six-minute walk estimate** (`SixMinuteWalkTestDistance`): only counted. When every value is the same number (real
+  exports sit at 500 m), it cannot show change and the chapter says so instead of drawing a flat line.
+
 ## Life milestones
 
 `data/milestones.yaml` (format in `milestones.example.yaml`): a date or a month, an optional end for a period, a label,
@@ -181,6 +211,7 @@ label unless the milestone is `public: true`. They are context only: no metric u
 | Rhythm | `cal`, `sun`, `clock`, `punch`, `matrix`, `dow` | `daily`, workout start and end local times, sun times for home |
 | Volume | `race`, `yearly`, `weekly`, `mix` | `workouts_enriched` aggregates; race projection = year-to-date ÷ mean share-of-year completed by this day across complete years |
 | Pace and effort | `pace`, `ptemp`, `phour`, `hrpace`, `bpm`, `zones`, `fit`, `gait` | `workouts_enriched`, `daily` |
+| Heart and movement | `hrr`, `move` | `body.parquet`: cardio recovery per workout, weekly walking steadiness, daily stair speed |
 | Terrain and weather | `wx`, `cond`, `climb`, `hills`, `fill` | `workouts_enriched`, provenance columns |
 | Records | `recs` | `records` |
 | Bests | `prog`, `bestTable`, `loops`, `ff`, `edd`, `ground` | `best_efforts`, `loops`, `daily` fitness columns, exploration tables |
@@ -192,5 +223,6 @@ label unless the milestone is `public: true`. They are context only: no metric u
 | Sleep · Duration and timing | `sdur`, `sclock`, `sweek`, `smonth` | `sleep_nights` |
 | Sleep · Stages | `sstage`, `styp` | `sleep_nights`, `sleep_runs` (staged nights) |
 | Sleep · One night | `night` | one night's runs and vitals |
-| Sleep · Overnight vitals | `svit`, `stemp`, `sbreath` | `sleep_nights` vitals; apnea notification windows |
+| Sleep · Overnight vitals | `svit`, `stemp` | `sleep_nights` vitals |
+| Sleep · Breathing (hidden in share mode) | `sbreath`, `swin`, `sfact` | `sleep_nights.bdist`; notification windows and the fitted rule (`meta.sleep.breathing`) |
 | Sleep · Records, Sources | `srecords`, `ssrc` | `sleep_nights`; `cleaning_log` rules Z1–Z5 |

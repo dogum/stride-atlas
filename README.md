@@ -16,13 +16,13 @@ and say *"build this for my data."*
 
 ## What you get
 
-Twelve chapters, all computed from your data:
+Thirteen chapters, all computed from your data:
 
 | | |
 |---|---|
 | **Atlas.** Every GPS route as additive light: the streets you walk most glow brightest. Color by year, pace, heart rate, temperature or time of day; replay the years; click any line. | **In 3D.** The same routes stacked by date, so the loops you have walked for years rise as towers; switch the height to time of day or to the ground's elevation and watch them move. |
 | **Rhythm.** Every day since your first export as a calendar, your walking clock year by year, hour by weekday. | **Volume.** Cumulative miles year against year, miles by activity, weekly totals. |
-| **Pace and effort.** Every workout's pace, pace against temperature (raw and weather-adjusted), heart rate at the same pace, zones, resting heart rate and VO₂ max, gait from the phone. | **Terrain and weather.** Temperature at the start of every outing (from Health, else the nearest weather station), sky conditions, climbing, how hilly your routes are. |
+| **Pace and effort.** Every workout's pace, pace against temperature (raw and weather-adjusted), heart rate at the same pace, zones, resting heart rate and VO₂ max, gait from the phone. **Heart and movement:** how fast your heart recovers after each workout, walking steadiness and stair speed. | **Terrain and weather.** Temperature at the start of every outing (from Health, else the nearest weather station), sky conditions, climbing, how hilly your routes are. |
 | **Records.** Longest, fastest, steepest, hottest, coldest, earliest, darkest, most in a day, week, month and year, each one a click away from its route. | **Bests.** Best efforts found inside every GPS track, your favourite loops raced against themselves, a fitness and fatigue model, the Eddington number, new ground, and the share of streets near home you have walked. |
 | **Close-up.** One workout second by second: the route coloured by pace, elevation, pace and heart-rate streams, mile splits with grade-adjusted pace. | **Pool and weights.** Swims with laps, strokes and SWOLF; strength sessions; indoor rides. |
 | **Data health.** Every cleaning rule and how often it fired, one route raw against cleaned, why steps need deduplicating. | **Watches.** When each device and each metric first appeared, so a missing value is never read as a zero. |
@@ -32,7 +32,9 @@ Twelve chapters, all computed from your data:
 **And a Sleep page.** Every night since your first sleep record as one picture, coloured by stage; hours asleep and when
 you fall asleep and wake, year by year and night of the week; deep, core and REM, and a typical night lined up at the
 moment you fell asleep; one night stage by stage; heart rate, HRV, breathing, blood oxygen, wrist temperature and
-breathing disturbances measured while asleep; records; and where each night came from. Exports mix a lot of sleep
+breathing disturbances measured while asleep; records; and where each night came from. A Breathing chapter lays the
+watch's sleep apnea notifications over their 30-day windows and fits the simplest rule that explains them on your own
+data (a reconstruction, not a diagnosis; share mode leaves it out). Exports mix a lot of sleep
 sources (another watch, sleep apps, the phone's bedtime schedule, the Apple Watch before and after stages), often for
 the same night: each night keeps one, and old sleep-window trackers are marked as estimates rather than read as sleep.
 
@@ -126,6 +128,7 @@ export.zip ─▶ inventory ─▶ parse ─▶ strava ─▶ clean ─▶ enric
 make dev                               # in one terminal
 node scripts/record.mjs                # 1920×1080, in share mode, into data/video/
 node scripts/record.mjs --vertical     # 1080×1920 for Reels, TikTok and Shorts
+node scripts/record.mjs --short        # 15 seconds of what is new, for posting an update (add --vertical for phones)
 ```
 
 About 70 seconds, written from your data and cut to the beat: every route replayed under the title, a flight home, the

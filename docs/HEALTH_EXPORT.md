@@ -58,8 +58,12 @@ Types this project uses (verify the exact identifiers in Phase 0):
 | `HKQuantityTypeIdentifierAppleSleepingWristTemperature` | degF | sensor timeline |
 | `HKQuantityTypeIdentifierDistanceSwimming`, `SwimmingStrokeCount` | yd, count | swims, SWOLF |
 | `HKCategoryTypeIdentifierSleepAnalysis` | — | the Sleep page (see Sleep below) |
-| `HKQuantityTypeIdentifierAppleSleepingBreathingDisturbances` | count | the Sleep page, overnight vitals |
-| `HKCategoryTypeIdentifierSleepApneaEvent` | — | the Sleep page: 30-day notification windows |
+| `HKQuantityTypeIdentifierAppleSleepingBreathingDisturbances` | count | the Sleep page, Breathing |
+| `HKCategoryTypeIdentifierSleepApneaEvent` | — | the Sleep page, Breathing: 30-day notification windows |
+| `HKQuantityTypeIdentifierHeartRateRecoveryOneMinute` | count/min | Heart and movement: cardio recovery after workouts |
+| `HKQuantityTypeIdentifierAppleWalkingSteadiness` | % (a fraction) | Heart and movement: weekly, iPhone |
+| `HKQuantityTypeIdentifierStairAscentSpeed`, `StairDescentSpeed` | ft/s | Heart and movement: daily median |
+| `HKQuantityTypeIdentifierSixMinuteWalkTestDistance` | m | counted only (real exports sit at 500 m) |
 
 ### `<Workout>`
 

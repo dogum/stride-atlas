@@ -5,10 +5,10 @@ const d3: any = d3_;
 import { DEMO, G, GPS_TYPES, MODE, S, emit, useWatch } from '../store';
 import { CREDIT } from '../credits';
 import { MilestonesButton } from './milestones';
-import { SLEEP_CHAPTERS } from './sleep';
+import { SHARE_HIDDEN, SLEEP_CHAPTERS } from './sleep';
 import { TYPE, fInt, fK } from '../core';
 
-export const CHAPTERS = [['atlas', 'Atlas'], ['stack', 'In 3D'], ['rhythm', 'Rhythm'], ['volume', 'Volume'], ['effort', 'Pace & effort'], ['terrain', 'Terrain & weather'], ['records', 'Records'], ['bests', 'Bests'], ['closeup', 'Close-up'], ['pool', 'Pool & weights'], ['health', 'Data health'], ['watches', 'Watches'], ['about', 'About']];
+export const CHAPTERS = [['atlas', 'Atlas'], ['stack', 'In 3D'], ['rhythm', 'Rhythm'], ['volume', 'Volume'], ['effort', 'Pace & effort'], ['body', 'Heart & movement'], ['terrain', 'Terrain & weather'], ['records', 'Records'], ['bests', 'Bests'], ['closeup', 'Close-up'], ['pool', 'Pool & weights'], ['health', 'Data health'], ['watches', 'Watches'], ['about', 'About']];
 
 export function applyFilter() {
   if (!S.types.has(S.effortType)) S.effortType = ['walk', 'run', 'hike'].find(k => S.types.has(k)) || 'walk';
@@ -113,7 +113,7 @@ export function Header() {
           </div>
         </div>
       </div>
-      <Toc key={S.view} />
+      <Toc key={S.view + (S.share ? '-share' : '')} />
     </header>
   );
 }
@@ -122,7 +122,7 @@ export function Header() {
 function Toc() {
   const nav = useRef<HTMLElement>(null);
   const [cur, setCur] = useState(0);
-  const chapters = S.view === 'sleep' ? SLEEP_CHAPTERS : CHAPTERS;
+  const chapters = (S.view === 'sleep' ? SLEEP_CHAPTERS : CHAPTERS).filter(([id]) => !(S.share && SHARE_HIDDEN.has(id)));
   useEffect(() => {
     const secs = chapters.map(([id]) => document.getElementById(id));
     let raf = 0;
