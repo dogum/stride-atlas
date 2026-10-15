@@ -164,15 +164,18 @@ export function StackSection() {
   const [info, setInfo] = useState<any>(null);
   const [missing, setMissing] = useState(false);
   useEffect(() => {
-    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) setNear(true); if (st.current) st.current.visible = e.isIntersecting; }, { rootMargin: '600px 0px' });
-    io.observe(sec.current!);
-    return () => io.disconnect();
+    // built when it comes within 600 px; turning only while a third of it is actually on screen
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) setNear(true); }, { rootMargin: '600px 0px' });
+    const on = new IntersectionObserver(([e]) => { st.current?.setVisible(e.intersectionRatio >= 0.33); }, { threshold: [0, 0.33, 0.66] });
+    io.observe(sec.current!); on.observe(wrap.current!);
+    return () => { io.disconnect(); on.disconnect(); };
   }, []);
   useEffect(() => {
     if (!near || st.current) return;
     const s = new Stack(wrap.current!);
     st.current = s; REG.stack = s;
-    s.visible = true;
+    const r = wrap.current!.getBoundingClientRect();
+    s.setVisible(r.top < innerHeight && r.bottom > 0 && Math.min(r.bottom, innerHeight) - Math.max(r.top, 0) >= r.height * 0.33);
     s.onHover = (w, x, y) => {
       if (!w) { TIP.hide(); return; }
       const r = wrap.current!.getBoundingClientRect();

@@ -15,10 +15,10 @@ function findChrome() {
   throw new Error('no Chrome or Chromium found: set CHROME=/path/to/chrome');
 }
 
-export async function launch({ width = 1400, height = 1000, scale = 2, light = false, reducedMotion = true } = {}) {
+export async function launch({ width = 1400, height = 1000, scale = 2, light = false, reducedMotion = true, args = [] } = {}) {
   const profile = mkdtempSync(join(tmpdir(), 'stride-cdp-'));
   const chrome = spawn(findChrome(), ['--headless=new', '--hide-scrollbars', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
-    `--window-size=${width},${height}`, '--autoplay-policy=no-user-gesture-required', 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+    `--window-size=${width},${height}`, '--autoplay-policy=no-user-gesture-required', ...args, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
   const wsUrl = await new Promise((ok, no) => {
     let buf = '';
     chrome.stderr.on('data', d => { buf += d; const m = buf.match(/DevTools listening on (ws:\/\/\S+)/); if (m) ok(m[1]); });

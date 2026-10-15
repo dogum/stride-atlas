@@ -112,6 +112,13 @@ Run these on every new export. Each one broke something in the first build.
 
 ---
 
+- **A page at rest draws nothing.** An auto-rotating WebGL view redraws on every screen refresh, off screen too if
+  its visibility margin is generous, and at 144 Hz on a laptop's integrated GPU that can stall the whole browser.
+  Turn only while on screen, cap the frame rate, give up when frames arrive late, and check with `scripts/perf.mjs`
+  (WebGL draw calls per second while idle should be 0).
+- **Invisible pick layers still cost a full pass.** A wide transparent copy of every path for hover and click belongs
+  in the picking pass only (`layerFilter: ({ layer, isPicking }) => isPicking || layer.id !== 'pick'`).
+
 ## 8. Privacy
 
 - Home = densest cluster of route starts; it is stored only in the DuckDB file.

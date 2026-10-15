@@ -50,6 +50,8 @@ export class Atlas {
       layers: [],
       pickingRadius: 6,
       useDevicePixels: Math.min(2, devicePixelRatio || 1),
+      // the wide pick layer exists for hover and click only: never draw it on screen
+      layerFilter: ({ layer, isPicking }: any) => isPicking || layer.id !== 'routes-pick',
     } as any);
     this.deck.setProps({ viewState: this.view });
     const c: HTMLCanvasElement | null = el.querySelector('canvas');

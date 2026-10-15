@@ -165,7 +165,8 @@ main { max-width: 1480px; margin: 0 auto; padding-inline: 20px; padding-block: 1
 #mapOver { cursor: crosshair; }
 .map-ui { position: absolute; left: 14px; right: 14px; top: 12px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; pointer-events: none; }
 .map-ui > * { pointer-events: auto; }
-.glass { background: rgba(8,13,24,.74); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(151,165,187,.18); border-radius: var(--r-md); color: #eef2f7; }
+/* no backdrop blur over the WebGL canvases: it is recomputed on every frame they draw, which is costly on many GPUs */
+.glass { background: rgba(8,13,24,.88); border: 1px solid rgba(151,165,187,.18); border-radius: var(--r-md); color: #eef2f7; }
 .glass .seg { background: transparent; border: 0; }
 .glass .seg button { color: #97a5bb; }
 .glass .seg button:hover { color: #eef2f7; }

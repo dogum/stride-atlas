@@ -2,6 +2,26 @@
 
 What changed between releases, newest first. Every judgment call behind these is in [docs/DECISIONS.md](docs/DECISIONS.md).
 
+## 0.3.1 (2026-10-15): A page that rests
+
+### Fixed
+
+- **The page could slow some browsers to a crawl.** The 3D view kept turning, and so redrawing thousands of routes, on
+  every screen refresh from the moment the page loaded, while it was still off screen below the map; on a 144 Hz
+  laptop screen running Chrome on integrated graphics that could swamp the GPU the browser needs to scroll.
+  - At rest the page now makes no WebGL draw calls at all (it made about 480 a second at the top of the demo).
+  - The 3D view turns only while a third of it is on screen, at most 30 frames a second, for a minute at a time, and
+    not at all on a computer whose frames cannot keep up (which also drops it to one pixel per screen pixel).
+  - The wide, invisible copy of every route that makes hover and click work is drawn only when picking, not on screen,
+    on the map and in 3D.
+  - Building the 3D view hands the browser back its turn as it goes: its longest frame went from about 1.1 s to 33 ms.
+  - The controls over the map and the 3D view lose their background blur, which was recomputed on every frame.
+
+### Added
+
+- `node scripts/perf.mjs`: frame times and WebGL draw calls while the page rests and scrolls, optionally with
+  software-only graphics and a slower CPU.
+
 ## 0.3.0 (2026-10-14): Breathing, heart and movement
 
 After pulling, run `make all` and reload the app.

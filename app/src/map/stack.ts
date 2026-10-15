@@ -46,6 +46,9 @@ export class Stack {
   exag = 1;
   info: any = {};
   spin = 0; idleUntil = 0; visible = false; reduced = false;
+  // the slow turn: time-based, at most 30 frames a second, only while the view is on screen, for a minute at a time,
+  // and never again on a computer that cannot keep up (its frames arrive late), which also drops to one pixel per pixel
+  spinFrom = 0; lastSpin = 0; late = 0; slow = false; buildN = 0;
   onHover: (w: any | null, x: number, y: number) => void = () => {};
   onClick: (w: any) => void = () => {};
 
@@ -64,25 +67,51 @@ export class Stack {
       onClick: (info: any) => { if (info.object?.w) this.onClick(info.object.w); },
       getCursor: ({ isHovering, isDragging }: any) => isDragging ? 'grabbing' : isHovering ? 'pointer' : 'grab',
       layers: [], pickingRadius: 5, useDevicePixels: Math.min(2, devicePixelRatio || 1),
+      // the wide pick layer exists for hover and click only: never draw it on screen
+      layerFilter: ({ layer, isPicking }: any) => isPicking || layer.id !== 'pick',
     } as any);
     this.deck.setProps({ viewState: this.view });
     el.querySelector('canvas')?.setAttribute('aria-label', 'Routes around one place in 3D, stacked by date, time of day or elevation');
     this.reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const tick = () => {
+    const tick = (t: number) => {
       this.spin = requestAnimationFrame(tick);
       // a slow turn while nobody is touching it, so the third axis reads without a drag
-      if (!this.visible || this.reduced || REG.stackHold || performance.now() < this.idleUntil || !this.pieces.length) return;
-      this.view = { ...this.view, rotationOrbit: this.view.rotationOrbit + (REG.stackSpin ?? 0.07), transitionDuration: 0 };
+      const pres = REG.stackSpin != null;   // the video tour turns it faster, and always
+      if (!this.visible || this.reduced || REG.stackHold || t < this.idleUntil || !this.pieces.length || (!pres && (this.slow || t - this.spinFrom > 60000))) { this.lastSpin = 0; return; }
+      const dt = this.lastSpin ? t - this.lastSpin : 1000 / 30;
+      if (dt < 1000 / 31) return;
+      if (!pres && this.lastSpin) {
+        this.late = dt > 120 ? this.late + 1 : Math.max(0, this.late - 1);
+        if (this.late >= 10) { this.slow = true; this.deck?.setProps({ useDevicePixels: 1 }); return; }
+      }
+      this.lastSpin = t;
+      this.view = { ...this.view, rotationOrbit: this.view.rotationOrbit + (REG.stackSpin ?? 0.07) * Math.min(dt, 100) / (1000 / 60), transitionDuration: 0 };
       this.deck?.setProps({ viewState: this.view });
     };
     this.spin = requestAnimationFrame(tick);
   }
 
-  async build(): Promise<boolean> {
+  setVisible(on: boolean) {
+    if (on && !this.visible) { this.spinFrom = performance.now(); this.lastSpin = 0; }
+    this.visible = on;
+  }
+
+  // a caller that asks again while a build for the same place is still running waits for that build
+  inflight: Promise<boolean> | null = null;
+  build(): Promise<boolean> {
     const place = stackPlace();
     const key = `${place}|${S.share}|${G.routeEle ? 1 : 0}|${showMs() ? visibleMs().map(m => `${m.d}:${m.d2 ?? ''}:${m.kind}:${msLabel(m)}`).join(',') : ''}`;
-    if (key === this.key) return !!this.pieces.length;
+    if (key === this.key) return this.inflight ?? Promise.resolve(!!this.pieces.length);
     this.key = key;
+    const token = ++this.buildN;
+    const p: Promise<boolean> = this.make(place, token).finally(() => { if (this.inflight === p) this.inflight = null; });
+    this.inflight = p;
+    return p;
+  }
+
+  private async make(place: number, token: number): Promise<boolean> {
+    // thousands of routes: hand the browser back its turn now and then so scrolling never stalls on the build
+    const breathe = async () => { await new Promise(r => setTimeout(r, 0)); return token === this.buildN; };
     const xy = G.routeXY, gap = G.routeGap, sh = G.routeShare, ele = G.routeEle, tim = G.routeTime;
     const ws = G.workouts.filter((w: any) => w.place === place && w.route && w.outdoor && !w.fragment && GPS_TYPES.includes(w.type));
     if (!xy || !ws.length) { this.pieces = []; this.render(); return false; }
@@ -122,7 +151,9 @@ export class Stack {
     const zEle = (m: number) => Math.max(0, (m - base) * k * this.exag);
     const zDate = (w: any) => (w.d - d0 + w.hour / 24) / (d1 - d0) * H;
     const pieces: Piece[] = [];
+    let done = 0;
     for (const w of ws) {
+      if (++done % 150 === 0 && !(await breathe())) return false;
       const { off, n } = w.route;
       let start = -1, lastE = NaN;
       const flush = (a: number, b: number) => {

@@ -142,7 +142,8 @@ swap in your platform's music if you prefer. Open `?present=1` and press Play to
 
 `make help` lists everything. The ones you will use: `make all`, `make dev`, `make test`, `make validate`,
 `make verify-clean` (rebuild from the raw export and compare every output hash), `make weather-compare` (how the weather
-sources agree with Apple's own temperatures for you), `make demo`.
+sources agree with Apple's own temperatures for you), `make demo`. `node scripts/perf.mjs` (add `--software --cpu 4` for
+a computer without graphics acceleration) measures how the page draws while it sits still and while it scrolls.
 
 ## Sources and credits
 
