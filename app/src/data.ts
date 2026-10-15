@@ -127,13 +127,19 @@ export async function loadCore(progress: (s: string) => void) {
 }
 
 export async function loadRest() {
-  const [be, loops, laps, recs, ng, swimLaps, wxT, wxY, health, sensors, splits, body] = await Promise.all([
+  const [be, loops, laps, recs, ng, swimLaps, wxT, wxY, health, sensors, splits, body, sHours, sDays] = await Promise.all([
     pq('best_efforts.parquet'), pq('loops.parquet'), pq('loop_laps.parquet'), pq('records.parquet'), pq('new_ground.parquet'),
     pq('swim_laps.parquet'), pq('wx_model_temp.parquet'), pq('wx_model_year.parquet'), js('health.json'), js('sensors.json'), pq('splits.parquet'),
-    pq('body.parquet'),
+    pq('body.parquet'), pq('sound_hours.parquet'), pq('sound_days.parquet'),
   ]);
   // heart and movement (export.export_body): one list per kind, values still SI (m/s, a fraction for steadiness)
   const by = (k: string) => body.filter((r: any) => r.kind === k).map((r: any) => ({ ...dayParts(r.date), v: r.value, n: r.n, type: r.type, id: r.id, src: r.src }));
+  // sound (export.export_sound): month × hour medians for the heatmap, and one row per day
+  const month = (ym: string) => { const a = dayParts(ym + '-01'), [y, m] = ym.split('-').map(Number); return { ...a, d2: dayParts(m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`).d }; };
+  G.sound = sHours.length || sDays.length ? {
+    hours: sHours.map((r: any) => ({ ...month(r.month), hour: r.hour, n: r.n, v: r.db })),
+    days: sDays.map((r: any) => ({ ...dayParts(r.date), day: r.day_db, dayN: r.day_n, night: r.night_db, nightN: r.night_n, hp: r.hp_s, hpDb: r.hp_db, alerts: r.alerts, alertDb: r.alert_db })),
+  } : null;
   G.body = body.length ? { hrr: by('hrr'), steady: by('steady'), up: by('stair_up'), down: by('stair_down'), six: G.meta?.body?.six_min ?? null } : null;
   G.splits = splits;
   G.bestEfforts = be.filter(r => G.byId.has(r.id)).map(r => ({ ...r, w: G.byId.get(r.id), t: r.seconds / 60, D: r.distance_m / MI }));

@@ -8,7 +8,7 @@ import { MilestonesButton } from './milestones';
 import { SHARE_HIDDEN, SLEEP_CHAPTERS } from './sleep';
 import { TYPE, fInt, fK } from '../core';
 
-export const CHAPTERS = [['atlas', 'Atlas'], ['stack', 'In 3D'], ['rhythm', 'Rhythm'], ['volume', 'Volume'], ['effort', 'Pace & effort'], ['body', 'Heart & movement'], ['terrain', 'Terrain & weather'], ['records', 'Records'], ['bests', 'Bests'], ['closeup', 'Close-up'], ['pool', 'Pool & weights'], ['health', 'Data health'], ['watches', 'Watches'], ['about', 'About']];
+export const CHAPTERS = [['atlas', 'Atlas'], ['stack', 'In 3D'], ['rhythm', 'Rhythm'], ['volume', 'Volume'], ['effort', 'Pace & effort'], ['body', 'Heart & movement'], ['terrain', 'Terrain & weather'], ['records', 'Records'], ['bests', 'Bests'], ['closeup', 'Close-up'], ['pool', 'Pool & weights'], ['sound', 'Sound'], ['health', 'Data health'], ['watches', 'Watches'], ['about', 'About']];
 
 export function applyFilter() {
   if (!S.types.has(S.effortType)) S.effortType = ['walk', 'run', 'hike'].find(k => S.types.has(k)) || 'walk';

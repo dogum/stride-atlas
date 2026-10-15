@@ -13,6 +13,7 @@ import { drawLift, drawRides, drawSensors, drawSwim, drawSwolf } from './charts/
 import { RINGS, ST, drawStreets } from './charts/streets';
 import { drawDedupe, drawRules } from './charts/health';
 import { drawHrr, drawMove, sixMinuteNote } from './charts/body';
+import { drawEars, drawSoundDayNight, drawSoundHours, fLoud, loudest } from './charts/sound';
 import { PRESENT, Presenter } from './present';
 import { SleepView } from './components/sleep';
 import { loadMilestones } from './milestones';
@@ -47,6 +48,12 @@ function MoveFoot() {
   useWatch(['data']);
   const six = sixMinuteNote();
   return <><code>AppleWalkingSteadiness</code><code>StairAscentSpeed</code><code>StairDescentSpeed</code><span>{six ?? 'Steadiness is weekly, from the iPhone (iOS 15); stair speed from the phone or watch'}</span></>;
+}
+function SoundFoot() {
+  useWatch(['theme', 'data', 'filter']);
+  const l = loudest();
+  return <><code>EnvironmentalAudioExposure</code><span>{l ? `Loudest alert ${fLoud(l)}` : 'Median of the readings in each hour of each month; empty cells had fewer than four'}</span>
+    <span className="ramp" style={{ marginLeft: 'auto' }}><span>quieter</span><span className="bar-r" style={{ background: `linear-gradient(90deg, ${calRamp().join(',')})` }} /><span>louder</span></span></>;
 }
 function StreetsCredit() { useWatch(['streets']); return <span>{G.streets?.attribution ?? '© OpenStreetMap contributors (ODbL)'}.</span>; }
 function RingSeg() {
@@ -199,6 +206,15 @@ export function App() {
             <Panel id="swolf" cls="c6" title="SWOLF, lower is better" draw={drawSwolf} />
             <Panel id="lift" cls="c12" title="Strength sessions per week" draw={drawLift} />
             <Panel id="rides" cls="c12" title="Indoor rides per month" draw={drawRides} />
+          </div>
+        </section>
+
+        <section className="chapter" id="sound">
+          <ChHead idx={18} eyebrow="Sound" title="How loud your days are">The watch measures the sound around you day and night, and headphones report how loud you listen. Levels in dBA, where a conversation is about 60.</ChHead>
+          <div className="grid">
+            <Panel id="shours" cls="c12" title="Every hour of every month" draw={drawSoundHours} foot={<SoundFoot />} />
+            <Panel id="sdaynight" cls="c7" title="Day and night" draw={drawSoundDayNight} foot={<><code>EnvironmentalAudioExposure</code><span>Each reading is the watch's average over about 30 minutes; nights are named by their evening</span></>} />
+            <Panel id="sears" cls="c5" title="Headphones and loud places" draw={drawEars} foot={<><code>HeadphoneAudioExposure</code><code>AudioExposureEvent</code><span>Headphone level is the energy average over listening time</span></>} />
           </div>
         </section>
 

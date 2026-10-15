@@ -2,6 +2,19 @@
 
 What changed between releases, newest first. Every judgment call behind these is in [docs/DECISIONS.md](docs/DECISIONS.md).
 
+## 0.4.0 (2026-10-15): Sound
+
+After pulling, run `make all` (or `make export` if nothing else changed) and reload the app.
+
+### Added
+
+- **Sound**, a chapter after Pool and weights, from the watch's noise readings, headphone levels and loud-sound alerts.
+  - Every hour of every month as one grid, coloured by the typical level around you, with your milestones.
+  - Day against night, month by month.
+  - Headphone listening (hours a week, and its level as an energy average), and loud-sound alerts a month.
+- The demo person, Alex, now has a sound history shaped by the milestones: a newborn's nights, quieter days working
+  from home, a train commute with headphones.
+
 ## 0.3.1 (2026-10-15): A page that rests
 
 ### Fixed

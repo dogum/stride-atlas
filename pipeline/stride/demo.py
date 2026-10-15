@@ -46,6 +46,8 @@ HRR_FROM = date(2022, 9, 12)              # watchOS 9: cardio recovery one minut
 STEADY_FROM = date(2021, 9, 20)           # iOS 15: walking steadiness, one value a week
 APNEA_ANCHOR = date(2025, 6, 10)          # the 30-day grid of sleep apnea notifications, and the windows that notify
 APNEA_NOTIFIED = (0, 1, 12, 13, 14)       # summer 2025 and summer 2026
+SOUND_FROM = date(2019, 9, 20)            # watchOS 6: the Noise app's readings, and headphone levels through the phone
+BABY, WFH, COMMUTE = date(2021, 8, 14), (date(2020, 3, 16), date(2022, 8, 29)), date(2024, 1, 8)   # as in the milestones
 STRAVA_FROM, STRAVA_TO = date(2016, 4, 2), date(2019, 3, 10)
 NAME = "Alex"
 WATCH_SRC = {"Watch4,2": f"{NAME}’s Apple Watch", "Watch7,5": f"{NAME}’s Apple Watch"}  # the second one has the non-breaking space
@@ -756,6 +758,7 @@ class Demo:
             ph = phone_on(d)
             wa = watch_on(d)
             tz = TRIP_TZ if away else TZ
+            self.sound_day(d, dow, away, wa, tz)
             if not dead_phone:
                 # spread the day over waking hours; workouts add their own steps at their own times
                 hours = np.arange(7, 22)
@@ -930,6 +933,37 @@ class Demo:
                 wa = watch_on(a1)
                 W.rec("SleepApneaEvent", WATCH_SRC[wa[0]], wa, None, datetime(a0.year, a0.month, a0.day, tzinfo=TZ), datetime(a1.year, a1.month, a1.day, tzinfo=TZ),
                       "HKCategoryValueNotApplicable", cat=True)
+
+    def sound_day(self, d: date, dow: int, away: bool, wa, tz):
+        """The sound around Alex (the watch's Noise readings, here one per hour) and in Alex's ears (headphone sessions
+        through the phone), on a stream of their own so adding it changed nothing else. The milestones shape it: a
+        newborn's nights, the quiet of working from home, a train commute."""
+        if d < SOUND_FROM:
+            return
+        W, rng = self.W, self._rng("sound", d.isoformat())
+        newborn, kid = BABY <= d < BABY + timedelta(days=300), d >= BABY
+        home_day = WFH[0] <= d <= WFH[1] and dow < 5
+        commute = d >= COMMUTE and dow < 5 and not away
+        if wa:
+            src = WATCH_SRC[wa[0]]
+            for h in range(24):
+                lvl = 40 if h < 6 else 52 if h < 7 else 64 if h < 17 else 70 if h < 21 else 58 if h < 23 else 46
+                lvl += (-4 if home_day and 9 <= h < 17 else 0) + (7 if commute and h in (7, 8, 17, 18) else 0) + (3 if kid and 17 <= h < 21 else 0)
+                lvl += (2 if dow >= 5 and 10 <= h < 18 else 0) + (3 if away and 9 <= h < 22 else 0)
+                if newborn and (h < 5 or h >= 23) and rng.random() < 0.35:
+                    lvl += 12
+                at = datetime(d.year, d.month, d.day, h, int(rng.integers(0, 10)), tzinfo=tz)
+                W.rec("EnvironmentalAudioExposure", src, wa, "dBASPL", at, at + timedelta(minutes=30), round(float(lvl + rng.normal(0, 3.2)), 2))
+            # a concert or a loud game a few times a year, a crying baby now and then
+            if rng.random() < 0.012 or (newborn and rng.random() < 0.02):
+                at = datetime(d.year, d.month, d.day, int(rng.integers(19, 23)), int(rng.integers(0, 59)), tzinfo=tz)
+                meta = f'  <MetadataEntry key="HKMetadataKeyAudioExposureLevel" value="{rng.uniform(91, 104):.4f} dBASPL"/>\n'
+                W.rec("AudioExposureEvent", src, wa, None, at, at + timedelta(minutes=3), "HKCategoryValueEnvironmentalAudioExposureEventMomentaryLimit", meta=meta, cat=True)
+        # headphones: the commute both ways, and an evening podcast now and then
+        for h, mins in ([(7, 35), (17, 40)] if commute else []) + ([(21, 25)] if rng.random() < 0.3 else []):
+            at = datetime(d.year, d.month, d.day, h, int(rng.integers(0, 30)), tzinfo=tz)
+            W.rec("HeadphoneAudioExposure", PHONE_SRC, None, "dBASPL", at, at + timedelta(minutes=float(rng.uniform(0.6, 1.2) * mins)),
+                  round(float(rng.normal(70 if commute else 66, 3)), 2))
 
     @staticmethod
     def _night(rng, onset: float, wake: float, staged: bool, newborn: bool) -> list[tuple[float, float, str]]:

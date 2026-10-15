@@ -195,6 +195,22 @@ not publish the threshold, so `sleep.breathing` reconstructs the simplest rule t
 - **Six-minute walk estimate** (`SixMinuteWalkTestDistance`): only counted. When every value is the same number (real
   exports sit at 500 m), it cannot show change and the chapter says so instead of drawing a flat line.
 
+## Sound
+
+`sound_hours.parquet` and `sound_days.parquet` (`export.export_sound`), local time from the time-zone timeline:
+
+- **Around you** (`EnvironmentalAudioExposure`, Apple Watch with watchOS 6 and later): each reading is the watch's
+  average level over its span (about 30 minutes). The **hour × month** grid is the median of the readings starting in
+  that hour of that month (cells with fewer than 4 readings stay empty). **Day** is the median of a date's readings
+  from 7:00 to 22:00, **night** the median from 22:00 to 7:00, named by its evening; the monthly lines take the median
+  of days, with the middle half as a band, and need 10 days in a month.
+- **In your ears** (`HeadphoneAudioExposure`): listening time is the sum of the samples' durations; the level is the
+  energy average over listening time, 10·log10(Σ t·10^(L/10) / Σ t), the way exposure adds up (one minute at 60 dB and
+  one at 80 dB average to 77 dB, not 70).
+- **Loud-sound alerts** (`AudioExposureEvent`): counted per day with the loudest level from
+  `HKMetadataKeyAudioExposureLevel`.
+- Missing hours and days are missing: the watch records only when worn.
+
 ## Life milestones
 
 `data/milestones.yaml` (format in `milestones.example.yaml`): a date or a month, an optional end for a period, a label,
@@ -217,6 +233,7 @@ label unless the milestone is `public: true`. They are context only: no metric u
 | Bests | `prog`, `bestTable`, `loops`, `ff`, `edd`, `ground` | `best_efforts`, `loops`, `daily` fitness columns, exploration tables |
 | Close-up | `cuMap`, `cuCharts`, `splits` | one workout's cleaned 1 s stream, resampled to 10 m for charts |
 | Pool and weights | `swim`, `swolf`, `lift` | swim laps, strength sessions |
+| Sound | `shours`, `sdaynight`, `sears` | `sound_hours.parquet` (median level per month and hour), `sound_days.parquet` (day and night levels, headphones, alerts) |
 | Data health | `rules`, `track`, `dedupe` | `cleaning_log`, raw and cleaned tracks, per-minute step series for one day |
 | Watches | `sensors` | `sensor_availability`, `devices` |
 | Sleep · Nights | `barcode`, tiles | `sleep_nights`, `sleep_runs` (each night's timeline as runs of one stage) |

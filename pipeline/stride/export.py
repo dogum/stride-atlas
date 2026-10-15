@@ -265,6 +265,53 @@ def export_body(con) -> dict | None:
             "six_min": {"n": six[0], "max_m": six[1], "at_max": six[2]} if six[0] else None}
 
 
+# ------------------------------------------------------------------ sound
+def export_sound(con) -> dict | None:
+    """Sound around you and in your ears, from the watch and headphones (local time from the time-zone timeline).
+
+    sound_hours.parquet: per month and hour of day, the number of environmental readings and their median level.
+    sound_days.parquet: per local date, the median environmental level by day (7:00 to 22:00) and by night (22:00 to
+    7:00, the night named by its evening), headphone listening time and its level, and loud-environment alerts with the
+    loudest level. Environmental readings are each an average over their span (about 30 minutes), so a median of them is
+    the typical level; headphone level is the energy average over listening time (10·log10 of the mean of 10^(L/10)),
+    the way exposure adds up. Hours and days without readings stay missing."""
+    env, hp = "'HKQuantityTypeIdentifierEnvironmentalAudioExposure'", "'HKQuantityTypeIdentifierHeadphoneAudioExposure'"
+    con.execute(f"""CREATE OR REPLACE TEMP TABLE sloc AS
+        SELECT CASE q.type WHEN {env} THEN 'env' ELSE 'hp' END AS k, q.value_si AS db, epoch(q.end_utc) - epoch(q.start_utc) AS s,
+               CAST(timezone(t.tz, q.start_utc::TIMESTAMPTZ) AS TIMESTAMP) AS t
+        FROM quantity_samples_clean q ASOF JOIN tz_segments t ON q.start_utc >= t.from_utc
+        WHERE q.type IN ({env}, {hp}) AND q.value_si IS NOT NULL""")
+    con.execute("""CREATE OR REPLACE TEMP TABLE aloc AS
+        SELECT CAST(timezone(t.tz, c.start_utc::TIMESTAMPTZ) AS TIMESTAMP) AS t,
+               TRY_CAST(regexp_extract(c.meta, '"HKMetadataKeyAudioExposureLevel": "([0-9.]+)', 1) AS DOUBLE) AS db
+        FROM category_samples c ASOF JOIN tz_segments t ON c.start_utc >= t.from_utc
+        WHERE c.type = 'HKCategoryTypeIdentifierAudioExposureEvent'""")
+    n_env, n_hp = con.execute("SELECT count(*) FILTER (WHERE k = 'env'), count(*) FILTER (WHERE k = 'hp') FROM sloc").fetchone()
+    n_al = con.execute("SELECT count(*) FROM aloc").fetchone()[0]
+    if not (n_env or n_hp or n_al):
+        for f in ("sound_hours.parquet", "sound_days.parquet"):
+            (OUT / f).unlink(missing_ok=True)
+        return None
+    copy_parquet(con, """SELECT strftime(t, '%Y-%m') AS month, CAST(hour(t) AS INTEGER) AS hour, CAST(count(*) AS INTEGER) AS n, median(db) AS db
+                         FROM sloc WHERE k = 'env' GROUP BY ALL ORDER BY ALL""", "sound_hours.parquet")
+    copy_parquet(con, """
+        WITH e AS (
+            SELECT CAST(t AS DATE) AS d, median(db) AS day_db, CAST(count(*) AS INTEGER) AS day_n FROM sloc
+            WHERE k = 'env' AND hour(t) >= 7 AND hour(t) < 22 GROUP BY 1),
+        n AS (
+            SELECT CAST(t - INTERVAL 7 HOUR AS DATE) AS d, median(db) AS night_db, CAST(count(*) AS INTEGER) AS night_n FROM sloc
+            WHERE k = 'env' AND (hour(t) >= 22 OR hour(t) < 7) GROUP BY 1),
+        h AS (
+            SELECT CAST(t AS DATE) AS d, sum(s) AS hp_s, 10 * log10(sum(s * pow(10, db / 10)) / nullif(sum(s), 0)) AS hp_db FROM sloc
+            WHERE k = 'hp' AND s > 0 GROUP BY 1),
+        a AS (SELECT CAST(t AS DATE) AS d, CAST(count(*) AS INTEGER) AS alerts, max(db) AS alert_db FROM aloc GROUP BY 1),
+        dd AS (SELECT d FROM e UNION SELECT d FROM n UNION SELECT d FROM h UNION SELECT d FROM a)
+        SELECT strftime(dd.d, '%Y-%m-%d') AS date, e.day_db, coalesce(e.day_n, 0) AS day_n, n.night_db, coalesce(n.night_n, 0) AS night_n,
+               h.hp_s, h.hp_db, coalesce(a.alerts, 0) AS alerts, a.alert_db
+        FROM dd LEFT JOIN e USING (d) LEFT JOIN n USING (d) LEFT JOIN h USING (d) LEFT JOIN a USING (d) ORDER BY dd.d""", "sound_days.parquet")
+    return {"env": n_env, "headphone": n_hp, "alerts": n_al}
+
+
 # ------------------------------------------------------------------ streams
 def export_streams(con, w: pd.DataFrame, home) -> int:
     zc = zone_center(home)
@@ -638,6 +685,8 @@ def run() -> dict:
         contours = export_contours(con, places, w)
     with Timer("heart and movement"):
         body_meta = export_body(con)
+    with Timer("sound"):
+        sound_meta = export_sound(con)
     with Timer("sleep"):
         sleep_meta = export_sleep(con)
         out["sleep_nights"] = sleep_meta["nights"] if sleep_meta else 0
@@ -665,7 +714,7 @@ def run() -> dict:
         meta = {
             "export_date": export_date, "home_tz": hs, "hr_max": float(params["hr_max"]), "hr_max_source": params["hr_max_source"], "hr_max_file_era": info.get("hr_max_file_era"),
             "zones_pct": paths.config()["heart_rate"]["zones_pct_of_max"], "year_min": year_min(con), "places": pl, "contours": contours,
-            "sleep": sleep_meta, "body": body_meta, "eddington": info.get("eddington"),
+            "sleep": sleep_meta, "body": body_meta, "sound": sound_meta, "eddington": info.get("eddington"),
             # which data folder these files came from (relative), so the dev server edits that folder's milestones
             "data_dir": paths.DATA.relative_to(paths.ROOT).as_posix() if paths.DATA.is_relative_to(paths.ROOT) else None, "weather_model": info.get("weather_model"), "fitness_model_start": info.get("fitness_model_start"),
             "counts": {"workouts": int(len(w)), "routes": int(len(ri)), "route_points": out["route_points"], "streams": out["streams"]},

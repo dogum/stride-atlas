@@ -64,6 +64,9 @@ Types this project uses (verify the exact identifiers in Phase 0):
 | `HKQuantityTypeIdentifierAppleWalkingSteadiness` | % (a fraction) | Heart and movement: weekly, iPhone |
 | `HKQuantityTypeIdentifierStairAscentSpeed`, `StairDescentSpeed` | ft/s | Heart and movement: daily median |
 | `HKQuantityTypeIdentifierSixMinuteWalkTestDistance` | m | counted only (real exports sit at 500 m) |
+| `HKQuantityTypeIdentifierEnvironmentalAudioExposure` | dBASPL | Sound: the level around you, one reading per ~30 min while the watch is worn |
+| `HKQuantityTypeIdentifierHeadphoneAudioExposure` | dBASPL | Sound: headphone level, short samples while listening (written by the phone, device is the headphones) |
+| `HKCategoryTypeIdentifierAudioExposureEvent` | — | Sound: loud-environment alerts; level in metadata `HKMetadataKeyAudioExposureLevel` |
 
 ### `<Workout>`
 

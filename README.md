@@ -16,7 +16,7 @@ and say *"build this for my data."*
 
 ## What you get
 
-Thirteen chapters, all computed from your data:
+Fourteen chapters, all computed from your data:
 
 | | |
 |---|---|
@@ -24,7 +24,7 @@ Thirteen chapters, all computed from your data:
 | **Rhythm.** Every day since your first export as a calendar, your walking clock year by year, hour by weekday. | **Volume.** Cumulative miles year against year, miles by activity, weekly totals. |
 | **Pace and effort.** Every workout's pace, pace against temperature (raw and weather-adjusted), heart rate at the same pace, zones, resting heart rate and VO₂ max, gait from the phone. **Heart and movement:** how fast your heart recovers after each workout, walking steadiness and stair speed. | **Terrain and weather.** Temperature at the start of every outing (from Health, else the nearest weather station), sky conditions, climbing, how hilly your routes are. |
 | **Records.** Longest, fastest, steepest, hottest, coldest, earliest, darkest, most in a day, week, month and year, each one a click away from its route. | **Bests.** Best efforts found inside every GPS track, your favourite loops raced against themselves, a fitness and fatigue model, the Eddington number, new ground, and the share of streets near home you have walked. |
-| **Close-up.** One workout second by second: the route coloured by pace, elevation, pace and heart-rate streams, mile splits with grade-adjusted pace. | **Pool and weights.** Swims with laps, strokes and SWOLF; strength sessions; indoor rides. |
+| **Close-up.** One workout second by second: the route coloured by pace, elevation, pace and heart-rate streams, mile splits with grade-adjusted pace. | **Pool and weights.** Swims with laps, strokes and SWOLF; strength sessions; indoor rides. **Sound:** how loud every hour of every month was around you, day against night, headphone listening and loud-sound alerts. |
 | **Data health.** Every cleaning rule and how often it fired, one route raw against cleaned, why steps need deduplicating. | **Watches.** When each device and each metric first appeared, so a missing value is never read as a zero. |
 
 <p align="center"><img src="docs/images/stack.png" alt="Every route around home stacked in 3D by date, with life milestones as coloured rings" width="100%"></p>
